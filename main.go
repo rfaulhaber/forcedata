@@ -5,27 +5,27 @@ import (
 	"fmt"
 	// use when drawing progress bars!
 	//"gopkg.in/cheggaaa/pb.v1"
-	"io/ioutil"
 	"encoding/json"
+	"io/ioutil"
 )
 
 type SFConfig struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	LoginURL string `json:"loginUrl"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	LoginURL     string `json:"loginUrl"`
 	InstanceName string `json:"instanceId"`
 }
 
 var actionMap = map[string]struct{}{
-	"insert":{},
-	"update":{},
-	"delete":{},
-	"upsert":{},
+	"insert": {},
+	"update": {},
+	"delete": {},
+	"upsert": {},
 }
 
 type Command struct {
 	Action string
-	Files []string
+	Files  []string
 }
 
 type Process struct {
@@ -35,6 +35,17 @@ type Process struct {
 	IsParallel bool
 }
 
+func (p Process) OptimizeCommands() []Command {
+	m := p.CommandMap()
+	cmds := make([]Command, 0)
+
+	for action, files := range m {
+		cmds = append(cmds, Command{action, files})
+	}
+
+	return cmds
+}
+
 // when not parallel, this returns an optimized mapping of actions to files. for instance, if the user enters the
 // command:
 // data insert file1 file2 update file3 insert file4
@@ -42,7 +53,7 @@ type Process struct {
 func (p Process) CommandMap() map[string][]string {
 	m := make(map[string][]string)
 
-	for _, cmd := range p.Commands{
+	for _, cmd := range p.Commands {
 		for _, file := range cmd.Files {
 			m[cmd.Action] = append(m[cmd.Action], file)
 		}
@@ -51,52 +62,43 @@ func (p Process) CommandMap() map[string][]string {
 	return m
 }
 
+type Job struct {
+
+}
+
 // example usage
 // data --config config.json insert test1.csv test2.json update test3.xml
 
 func main() {
-	//configFlag := flag.String("c", "", "Path to config file")
 	syncFlag := flag.Bool("s", false, "If true, does data load in sync mode")
 
 	flag.Parse()
-
-	//config, err := loadConfigFile(*configFlag)
-
-	//if err != nil {
-	//	log.Fatalln(err)
-	//}
 
 	cmds := parseArgs(flag.Args())
 
 	process := Process{cmds, *syncFlag}
 
-	//fmt.Println(config)
 	fmt.Println(process)
+	fmt.Println(process.CommandMap())
 }
 
 func parseArgs(args []string) []Command {
+	// TODO handle invalid syntax
 	cmds := make([]Command, 0)
 
 	for len(args) > 0 {
 		cmd := Command{}
 
+		cmd.Action = args[0]
 
-		if isCommand(args[0]) {
-			cmd.Action = args[0]
+		i := 1
 
-			i := 1
-
-			for i < len(args) && !isCommand(args[i]) {
-				cmd.Files = append(cmd.Files, args[i])
-				i++
-			}
-
-			args = args[i:]
-		} else {
-			cmd.Files = append(cmd.Files, args[0])
-			args = args[1:]
+		for i < len(args) && !isCommand(args[i]) {
+			cmd.Files = append(cmd.Files, args[i])
+			i++
 		}
 
+		args = args[i:]
 		cmds = append(cmds, cmd)
 	}
 
