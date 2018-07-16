@@ -16,6 +16,11 @@ type SFConfig struct {
 	InstanceName string `json:"instanceId"`
 }
 
+type SFAuth struct {
+	SessionID string
+	ServerURL string
+}
+
 var actionMap = map[string]struct{}{
 	"insert": {},
 	"update": {},
@@ -63,13 +68,66 @@ func (p Process) CommandMap() map[string][]string {
 }
 
 type Job struct {
+	C      chan JobInfo
+	Done   chan bool
 
+	auth SFAuth
+}
+
+type JobRequest struct {
+	Operation   string `json:"operation"`
+	Object      string `json:"object"`
+	ContentType string `json:"contentType"`
+}
+
+type JobInfo struct {
+	ApexProcessingTime      int     `json:"apexProcessingTime"`
+	APIActiveProcessingTime int     `json:"apiActiveProcessingTime"`
+	APIVersion              float32 `json:"apiVersion"`
+	ConcurrencyMode         string  `json:"concurrencyMode"`
+	CreatedByID             string  `json:"createdById"`
+	CreatedDate             string  `json:"createdDate"`
+	ID                      string  `json:"id"`
+	BatchesCompleted        int     `json:"numberBatchesCompleted"`
+	BatchesFailed           int     `json:"numberBatchesFailed"`
+	BatchesInProgress       int     `json:"numberBatchesInProgress"`
+	BatchesQueued           int     `json:"numberBatchesQueued"`
+	BatchesTotal            int     `json:"numberBatchesTotal"`
+	RecordsFailed           int     `json:"numberRecordsFailed"`
+	RecordsProcessed        int     `json:"numberRecordsProcessed"`
+	Retries                 int     `json:"numberRetries"`
+	Object                  string  `json:"object"`
+	Operation               string  `json:"operation"`
+	State                   string  `json:"state"`
+	SystemModstamp          string  `json:"SystemModstamp"`
+	TotalProcessingTime     int     `json:"totalProcessingTime"`
+}
+
+func (j *Job) Create() {
+
+}
+
+func (j *Job) Run() {
+}
+
+func NewJob(auth SFAuth) *Job {
+	return &Job{
+		make(chan JobInfo),
+		make(chan bool),
+		auth,
+	}
 }
 
 // example usage
 // data --config config.json insert test1.csv test2.json update test3.xml
 
 func main() {
+	/*
+	 * other flags to implement:
+	 * - config flag
+	 * - out flag (for writing / piping output)
+	 * - flag to indicate program should convert non-CSV to CSV
+	 */
 	syncFlag := flag.Bool("s", false, "If true, does data load in sync mode")
 
 	flag.Parse()
