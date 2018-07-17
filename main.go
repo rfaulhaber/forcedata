@@ -1,20 +1,20 @@
 package main
 
 import (
-		// use when drawing progress bars!
+	// use when drawing progress bars!
 	//"gopkg.in/cheggaaa/pb.v1"
+	"bufio"
+	"bytes"
 	"encoding/json"
+	"encoding/xml"
+	"fmt"
 	"github.com/ogier/pflag"
 	"io/ioutil"
-		"os"
-	"fmt"
-	"bufio"
-	"strings"
-	"net/http"
-	"text/template"
 	"log"
-	"bytes"
-	"encoding/xml"
+	"net/http"
+	"os"
+	"strings"
+	"text/template"
 )
 
 type SFConfig struct {
@@ -202,7 +202,7 @@ func main() {
 
 	pflag.Parse()
 
-	if (*authFlag) {
+	if *authFlag {
 		session := authenticatePrompt()
 		writeSession(session)
 	}
@@ -252,7 +252,7 @@ func loadConfigFile(path string) (config SFConfig, err error) {
 	return
 }
 
-func isOperation (str string) bool {
+func isOperation(str string) bool {
 	_, ok := operationMap[str]
 	return ok
 }
@@ -305,7 +305,7 @@ func authenticatePrompt() SFSession {
 		password,
 	})
 
-	req, _ := http.NewRequest("POST", loginURL + "/services/Soap/u/43.0", &buf)
+	req, _ := http.NewRequest("POST", loginURL+"/services/Soap/u/43.0", &buf)
 	req.Header.Add("Content-Type", "text/xml")
 	req.Header.Add("SOAPAction", "login")
 
