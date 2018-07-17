@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/ogier/pflag"
+	"github.com/rfaulhaber/force-data/cmd"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -198,14 +198,16 @@ func main() {
 	 * - flag to indicate program should convert non-CSV to CSV
 	 */
 	//syncFlag := pflag.BoolP("sync", "s", false, "If true, does data load in sync mode")
-	authFlag := pflag.Bool("authenticate", false, "starts authentication mode, gets session ID and server URL")
+	//authFlag := pflag.Bool("authenticate", false, "starts authentication mode, gets session ID and server URL")
+	//
+	//pflag.Parse()
+	//
+	//if *authFlag {
+	//	session := authenticatePrompt()
+	//	writeSession(session)
+	//}
 
-	pflag.Parse()
-
-	if *authFlag {
-		session := authenticatePrompt()
-		writeSession(session)
-	}
+	cmd.Execute()
 
 	//cmds := parseArgs(pflag.Args())
 	//
