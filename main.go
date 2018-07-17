@@ -6,7 +6,16 @@ import (
 	"encoding/json"
 	"github.com/ogier/pflag"
 	"io/ioutil"
-	)
+		"os"
+	"fmt"
+	"bufio"
+	"strings"
+	"net/http"
+	"text/template"
+	"log"
+	"bytes"
+	"encoding/xml"
+)
 
 type SFConfig struct {
 	Username     string `json:"username"`
@@ -16,8 +25,8 @@ type SFConfig struct {
 }
 
 type SFSession struct {
-	SessionID string
-	ServerURL string
+	ServerURL string `xml:"serverUrl"`
+	SessionID string `xml:"sessionId"`
 }
 
 type Operation int
@@ -189,8 +198,14 @@ func main() {
 	 * - flag to indicate program should convert non-CSV to CSV
 	 */
 	//syncFlag := pflag.BoolP("sync", "s", false, "If true, does data load in sync mode")
+	authFlag := pflag.Bool("authenticate", false, "starts authentication mode, gets session ID and server URL")
 
 	pflag.Parse()
+
+	if (*authFlag) {
+		session := authenticatePrompt()
+		writeSession(session)
+	}
 
 	//cmds := parseArgs(pflag.Args())
 	//
@@ -241,3 +256,93 @@ func isOperation (str string) bool {
 	_, ok := operationMap[str]
 	return ok
 }
+
+type soapResult struct {
+	XMLName xml.Name `xml:"Envelope"`
+	Body    struct {
+		LoginResponse struct {
+			Result SFSession `xml:"result"`
+		} `xml:"loginResponse"`
+	} `xml:"Body"`
+	ServerURL string `xml:"serverUrl"`
+}
+
+type SessionResult struct {
+	ServerURL string `xml:"serverUrl"`
+	SessionID string `xml:"sessionId"`
+}
+
+func authenticatePrompt() SFSession {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Username: ")
+	username, _ := reader.ReadString('\n')
+
+	fmt.Print("Password + security token: ")
+	password, _ := reader.ReadString('\n')
+
+	fmt.Print("Login URL (https://login.salesforce.com): ")
+	loginURL, _ := reader.ReadString('\n')
+
+	if len(loginURL) == 1 && []byte(loginURL)[0] == 10 {
+		loginURL = "https://login.salesforce.com"
+	}
+
+	username = trimString(username)
+	password = trimString(password)
+	loginURL = strings.TrimSuffix(trimString(loginURL), "/")
+
+	loginFile, _ := ioutil.ReadFile("./templates/login.xml")
+
+	t, _ := template.New("login").Parse(string(loginFile))
+
+	var buf bytes.Buffer
+
+	t.Execute(&buf, struct {
+		Username string
+		Password string
+	}{
+		username,
+		password,
+	})
+
+	req, _ := http.NewRequest("POST", loginURL + "/services/Soap/u/43.0", &buf)
+	req.Header.Add("Content-Type", "text/xml")
+	req.Header.Add("SOAPAction", "login")
+
+	client := http.DefaultClient
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		log.Fatalln("something went wrong when trying to log you in", err)
+	}
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		log.Fatalln("something went wrong with reading the response", err)
+	}
+
+	var sResult soapResult
+
+	xml.Unmarshal(respBody, &sResult)
+
+	if err != nil {
+		log.Fatalln("something went wrong with unmarshalling the XML", err)
+	}
+
+	return sResult.Body.LoginResponse.Result
+}
+
+func writeSession(session SFSession) {
+	sessionJSON, _ := json.MarshalIndent(session, "", "\t")
+	fmt.Println(string(sessionJSON))
+}
+
+func trimString(str string) string {
+	return strings.TrimSpace(strings.TrimSuffix(str, "\n"))
+}
+
+//func getInstance(url string) string {
+//
+//}
