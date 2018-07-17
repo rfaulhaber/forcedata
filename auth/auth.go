@@ -17,8 +17,9 @@ import (
 
 const defaultLoginURL = "https://login.salesforce.com"
 
+// TODO implement other formats?
 type SFConfig struct {
-	Username string `json:"username" yaml:"username"`
+	Username string `json:"username"`
 	Password string `json:"password"`
 	LoginURL string `json:"loginUrl"`
 }

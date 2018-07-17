@@ -64,7 +64,7 @@ func initConfig() {
 
 		// Search config in home directory with name ".data-cmd" (without extension).
 		viper.AddConfigPath(home)
-		viper.SetConfigName(".force-data-cmd")
+		viper.SetConfigName(".data-cmd")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

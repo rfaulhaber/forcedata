@@ -12,11 +12,13 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Prints the current version and exits",
 	Long:  `Prints the current version and exits.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("data v" + version)
-	},
+	Run:   printVersion,
 }
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+}
+
+func printVersion(cmd *cobra.Command, args []string) {
+	fmt.Println("data v" + version)
 }
