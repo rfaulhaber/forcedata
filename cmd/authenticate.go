@@ -36,35 +36,30 @@ func init() {
 }
 
 func runAuthenticate(cmd *cobra.Command, args []string) {
+	var config auth.SFConfig
 	if fileFlag {
-		fmt.Println("I should try to load the auth file!")
-	} else {
-		config := auth.AuthenticatePrompt()
-
-		session, err := auth.GetSessionInfo(config, http.DefaultClient)
+		conf, err := auth.AuthenticateFromFile(args[0])
 
 		if err != nil {
-			fmt.Println("something went wrong with getting your session info")
-			os.Exit(1)
+			log.Println("from file error")
+			log.Fatalln(err)
 		}
 
-		if len(outFlag) > 0 {
-			// TODO if outflag is dir, write to new file in dir
-			// TODO if outflag is file, write to file
-			outFile, err := os.Create(outFlag + "/session.json")
-
-			if err != nil {
-				// only for development
-				// TODO implement better error handling here
-				log.Println("os create error")
-				log.Fatalln(err)
-			}
-
-			auth.WriteSession(session, outFile)
-		} else {
-			auth.WriteSession(session, os.Stdout)
-		}
+		config = conf
+	} else {
+		config = auth.AuthenticatePrompt()
 	}
+
+	log.Println("config", config)
+
+	session, err := auth.GetSessionInfo(config, http.DefaultClient)
+
+	if err != nil {
+		fmt.Println("something went wrong with getting your session info")
+		os.Exit(1)
+	}
+
+	writeOut(session)
 
 	fmt.Println(outFlag)
 }
@@ -77,4 +72,23 @@ func validateArgs(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func writeOut(session auth.SFSession) {
+	if len(outFlag) > 0 {
+		// TODO if outflag is dir, write to new file in dir
+		// TODO if outflag is file, write to file
+		outFile, err := os.Create(outFlag + "/session.json")
+
+		if err != nil {
+			// only for development
+			// TODO implement better error handling here
+			log.Println("os create error")
+			log.Fatalln(err)
+		}
+
+		auth.WriteSession(session, outFile)
+	} else {
+		auth.WriteSession(session, os.Stdout)
+	}
 }

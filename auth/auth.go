@@ -24,8 +24,8 @@ type SFConfig struct {
 }
 
 type SFSession struct {
-	ServerURL string `xml:"serverUrl"`
-	SessionID string `xml:"sessionId"`
+	ServerURL string `xml:"serverUrl" json:"serverUrl"`
+	SessionID string `xml:"sessionId" json:"sessionId"`
 }
 
 type client interface {
@@ -76,6 +76,8 @@ type soapResult struct {
 	ServerURL string `xml:"serverUrl"`
 }
 
+// TODO write generic error handler?
+
 func GetSessionInfo(config SFConfig, c client) (SFSession, error) {
 	loginFile, err := ioutil.ReadFile("./auth/login.xml")
 
@@ -108,13 +110,41 @@ func GetSessionInfo(config SFConfig, c client) (SFSession, error) {
 
 	var sResult soapResult
 
-	xml.Unmarshal(respBody, &sResult)
+	err = xml.Unmarshal(respBody, &sResult)
 
 	if err != nil {
 		return SFSession{}, err
 	}
 
 	return sResult.Body.LoginResponse.Result, nil
+}
+
+// TODO should this be dealt with via --config?
+func AuthenticateFromFile(path string) (SFConfig, error) {
+	fileBytes, err := ioutil.ReadFile(path)
+
+	log.Println("path", path)
+
+	if err != nil {
+		log.Println("authentication from file error")
+		return SFConfig{}, err
+	}
+
+	var config SFConfig
+
+	// TODO deal with different files
+	err = json.Unmarshal(fileBytes, &config)
+
+	if err != nil {
+		log.Println("json unmarshal error")
+		return SFConfig{}, err
+	}
+
+	if len(config.LoginURL) == 0 {
+		config.LoginURL = defaultLoginURL
+	}
+
+	return config, nil
 }
 
 func WriteSession(session SFSession, writer io.Writer) {
