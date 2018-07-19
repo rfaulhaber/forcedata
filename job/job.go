@@ -1,33 +1,14 @@
 package job
 
-import "github.com/rfaulhaber/force-data/auth"
-
-type Operation int
-
-const (
-	Insert = iota
-	Update
-	Delete
-	Upsert
+import (
+	"github.com/rfaulhaber/force-data/auth"
+	"net/http"
+	"encoding/json"
+	"bytes"
+	"io/ioutil"
 )
 
-var operations = []string{
-	"insert",
-	"update",
-	"delete",
-	"upsert",
-}
-
-var operationMap = map[string]Operation{
-	"insert": Insert,
-	"update": Update,
-	"delete": Delete,
-	"upsert": Upsert,
-}
-
-func (o Operation) String() string {
-	return operations[o]
-}
+const latestVersion = "43.0"
 
 type Job struct {
 	Status chan JobInfo
@@ -35,7 +16,7 @@ type Job struct {
 
 	jobID   string
 	session auth.SFSession
-	config JobConfig
+	config  JobConfig
 }
 
 type JobInfo struct {
@@ -63,8 +44,8 @@ type JobInfo struct {
 }
 
 type JobConfig struct {
-	Object    string
-	Operation Operation
+	Object    string `json:"object"`
+	Operation string `json:"operation"`
 }
 
 func NewJob(config JobConfig, session auth.SFSession) *Job {
@@ -78,6 +59,24 @@ func NewJob(config JobConfig, session auth.SFSession) *Job {
 }
 
 func (j *Job) Create() {
+	endpoint := j.session.ServerURL + "/services/data/v" + latestVersion + "/jobs/ingest"
+
+	reqBody, _ := json.Marshal(j.config)
+
+	req, _ := http.NewRequest("POST", endpoint, bytes.NewReader(reqBody))
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Add("Accept", "application/json")
+
+	client := http.DefaultClient
+
+	response, err := client.Do(req)
+
+	if err != nil {
+		// TODO handle
+	}
+
+	respBody, err := ioutil.ReadAll(response.Body)
+
 
 }
 
@@ -101,3 +100,16 @@ func (j *Job) Delete() {
 func (j *Job) setJobID(id string) {
 	j.jobID = id
 }
+
+type endpointType int
+
+const (
+	createJob = iota
+	uploadJob
+	closeJob
+	deleteJob
+	jobInfo
+	success
+	failure
+	unprocessed
+)

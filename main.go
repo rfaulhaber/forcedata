@@ -133,27 +133,27 @@ type JobRequest struct {
 }
 
 type JobInfo struct {
-	ApexProcessingTime      uint     `json:"apexProcessingTime"`
-	APIActiveProcessingTime int     `json:"apiActiveProcessingTime"`
+	ApexProcessingTime      uint   `json:"apexProcessingTime"`
+	APIActiveProcessingTime int    `json:"apiActiveProcessingTime"`
 	APIVersion              string `json:"apiVersion"`
-	ColumnDelimiter string `json:"columnDelimiter"`
-	ConcurrencyMode         string  `json:"concurrencyMode"`
-	ContentType string `json:"contentType"`
-	ContentURL string `json:"contentUrl"`
-	CreatedByID             string  `json:"createdById"`
-	CreatedDate             string  `json:"createdDate"`
-	ExternalIdFieldName string `json:"externalIdFieldName"`
-	ID                      string  `json:"id"`
-	JobType string `json:"jobType"`
-	LineEnding string `json:"lineEnding"`
-	RecordsFailed           uint     `json:"numberRecordsFailed"`
-	RecordsProcessed        uint     `json:"numberRecordsProcessed"`
-	Retries                 uint     `json:"retries"`
-	Object                  string  `json:"object"`
-	Operation               string  `json:"operation"`
-	State                   string  `json:"state"`
-	SystemModstamp          string  `json:"SystemModstamp"`
-	TotalProcessingTime     uint     `json:"totalProcessingTime"`
+	ColumnDelimiter         string `json:"columnDelimiter"`
+	ConcurrencyMode         string `json:"concurrencyMode"`
+	ContentType             string `json:"contentType"`
+	ContentURL              string `json:"contentUrl"`
+	CreatedByID             string `json:"createdById"`
+	CreatedDate             string `json:"createdDate"`
+	ExternalIdFieldName     string `json:"externalIdFieldName"`
+	ID                      string `json:"id"`
+	JobType                 string `json:"jobType"`
+	LineEnding              string `json:"lineEnding"`
+	RecordsFailed           uint   `json:"numberRecordsFailed"`
+	RecordsProcessed        uint   `json:"numberRecordsProcessed"`
+	Retries                 uint   `json:"retries"`
+	Object                  string `json:"object"`
+	Operation               string `json:"operation"`
+	State                   string `json:"state"`
+	SystemModstamp          string `json:"SystemModstamp"`
+	TotalProcessingTime     uint   `json:"totalProcessingTime"`
 }
 
 // sends request to server to create job
