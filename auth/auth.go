@@ -13,9 +13,22 @@ import (
 	"os"
 	"strings"
 	"text/template"
+	"errors"
 )
 
 const defaultLoginURL = "https://login.salesforce.com"
+
+const authTemplate = `<?xml version="1.0" encoding="utf-8" ?>
+		<env:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+					  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+					  xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
+		<env:Body>
+			<n1:login xmlns:n1="urn:partner.soap.sforce.com">
+				<n1:username>{{.Username}}</n1:username>
+				<n1:password>{{.Password}}</n1:password>
+			</n1:login>
+		</env:Body>
+	</env:Envelope>`
 
 // TODO implement other formats?
 type SFConfig struct {
@@ -73,21 +86,20 @@ type soapResult struct {
 		LoginResponse struct {
 			Result SFSession `xml:"result"`
 		} `xml:"loginResponse"`
+		Fault soapFault `xml:"Fault"`
 	} `xml:"Body"`
 	ServerURL string `xml:"serverUrl"`
+}
+
+type soapFault struct {
+	FaultCode string `xml:"faultcode"`
+	FaultString string `xml:"faultstring"`
 }
 
 // TODO write generic error handler?
 
 func GetSessionInfo(config SFConfig, c client) (SFSession, error) {
-	loginFile, err := ioutil.ReadFile("./auth/login.xml")
-
-	if err != nil {
-		log.Println("file read err")
-		panic(err)
-	}
-
-	t, _ := template.New("login").Parse(string(loginFile))
+	t, _ := template.New("login").Parse(authTemplate)
 
 	var buf bytes.Buffer
 
@@ -105,9 +117,14 @@ func GetSessionInfo(config SFConfig, c client) (SFSession, error) {
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 
+	log.Println("server response", string(respBody))
+
 	if err != nil {
 		return SFSession{}, err
 	}
+
+	// TODO handle auth error
+	// TODO custom errors?
 
 	var sResult soapResult
 
@@ -115,6 +132,12 @@ func GetSessionInfo(config SFConfig, c client) (SFSession, error) {
 
 	if err != nil {
 		return SFSession{}, err
+	}
+
+	log.Println("fault", sResult.Body.Fault)
+
+	if sResult.Body.Fault != (soapFault{}) {
+		return SFSession{}, errors.New("server responded with: " + sResult.Body.Fault.FaultString)
 	}
 
 	return sResult.Body.LoginResponse.Result, nil
