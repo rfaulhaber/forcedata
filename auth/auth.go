@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,8 +14,9 @@ import (
 	"os"
 	"strings"
 	"text/template"
-	"errors"
 )
+
+// TODO rewrite using connected app, oauth flow
 
 const defaultLoginURL = "https://login.salesforce.com"
 
@@ -69,9 +71,7 @@ func AuthenticatePrompt() SFConfig {
 		url = defaultLoginURL
 	}
 
-	username = trimString(username)
-	password = trimString(password)
-	url = strings.TrimSuffix(trimString(url), "/")
+	username, password, url = cleanInput(username, password, url)
 
 	return SFConfig{
 		username,
@@ -92,7 +92,7 @@ type soapResult struct {
 }
 
 type soapFault struct {
-	FaultCode string `xml:"faultcode"`
+	FaultCode   string `xml:"faultcode"`
 	FaultString string `xml:"faultstring"`
 }
 
@@ -168,12 +168,24 @@ func AuthenticateFromFile(path string) (SFConfig, error) {
 		config.LoginURL = defaultLoginURL
 	}
 
+	if !strings.HasPrefix(config.LoginURL, "https://") {
+		config.LoginURL = "https://" + config.LoginURL
+	}
+
 	return config, nil
 }
 
 func WriteSession(session SFSession, writer io.Writer) {
 	sessionJSON, _ := json.MarshalIndent(session, "", "\t")
 	io.WriteString(writer, string(sessionJSON))
+}
+
+func cleanInput(username, password, url string) (string, string, string) {
+	username = trimString(username)
+	password = trimString(password)
+	url = strings.TrimSuffix(trimString(url), "/")
+
+	return username, password, url
 }
 
 func trimString(str string) string {

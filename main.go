@@ -133,26 +133,27 @@ type JobRequest struct {
 }
 
 type JobInfo struct {
-	ApexProcessingTime      int     `json:"apexProcessingTime"`
+	ApexProcessingTime      uint     `json:"apexProcessingTime"`
 	APIActiveProcessingTime int     `json:"apiActiveProcessingTime"`
-	APIVersion              float32 `json:"apiVersion"`
+	APIVersion              string `json:"apiVersion"`
+	ColumnDelimiter string `json:"columnDelimiter"`
 	ConcurrencyMode         string  `json:"concurrencyMode"`
+	ContentType string `json:"contentType"`
+	ContentURL string `json:"contentUrl"`
 	CreatedByID             string  `json:"createdById"`
 	CreatedDate             string  `json:"createdDate"`
+	ExternalIdFieldName string `json:"externalIdFieldName"`
 	ID                      string  `json:"id"`
-	BatchesCompleted        int     `json:"numberBatchesCompleted"`
-	BatchesFailed           int     `json:"numberBatchesFailed"`
-	BatchesInProgress       int     `json:"numberBatchesInProgress"`
-	BatchesQueued           int     `json:"numberBatchesQueued"`
-	BatchesTotal            int     `json:"numberBatchesTotal"`
-	RecordsFailed           int     `json:"numberRecordsFailed"`
-	RecordsProcessed        int     `json:"numberRecordsProcessed"`
-	Retries                 int     `json:"numberRetries"`
+	JobType string `json:"jobType"`
+	LineEnding string `json:"lineEnding"`
+	RecordsFailed           uint     `json:"numberRecordsFailed"`
+	RecordsProcessed        uint     `json:"numberRecordsProcessed"`
+	Retries                 uint     `json:"retries"`
 	Object                  string  `json:"object"`
 	Operation               string  `json:"operation"`
 	State                   string  `json:"state"`
 	SystemModstamp          string  `json:"SystemModstamp"`
-	TotalProcessingTime     int     `json:"totalProcessingTime"`
+	TotalProcessingTime     uint     `json:"totalProcessingTime"`
 }
 
 // sends request to server to create job
