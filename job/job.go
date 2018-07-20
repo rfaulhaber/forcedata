@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"log"
-)
+	)
 
 const latestVersion = "43.0"
 
@@ -89,12 +89,48 @@ func (j *Job) Create() {
 		log.Fatalln("error in unmarshal", err)
 	}
 
-	j.jobID = info.ID
-	j.jobURL = info.ContentURL
+	j.setJobID(info.ID)
+	j.setJobID(info.ContentURL)
 }
 
 func (j *Job) Upload(files ...string) {
+	// TODO make async?
+	endpoint := j.jobURL + "/services/data/v" + latestVersion + "/jobs/ingest/" + j.jobID + "/batches"
 
+	readFiles := make([][]byte, len(files))
+
+	for _,  path := range files {
+		content, err := ioutil.ReadFile(path)
+
+		if err != nil {
+			// TODO handle
+			log.Fatalln("couldn't read file: ", path, err)
+		}
+
+		readFiles = append(readFiles, content)
+	}
+
+	for i := range readFiles {
+		content := readFiles[i]
+		req, err := http.NewRequest("POST", endpoint, bytes.NewReader(content))
+
+		if err != nil {
+			// TODO handle
+			log.Fatalln("couldn't create request: ", err)
+		}
+
+		client := http.DefaultClient
+
+		resp, err := client.Do(req)
+
+		if err != nil {
+			log.Fatalln("response err", err)
+		}
+
+		if resp.StatusCode != 201 {
+			log.Fatalln("server responded with ", resp.StatusCode, "with file: " )
+		}
+	}
 }
 
 func (j *Job) Watch() {
@@ -118,15 +154,19 @@ func (j *Job) setJobID(id string) {
 	j.jobID = id
 }
 
-type endpointType int
+func (j *Job) setJobURL(url string) {
+	j.jobURL = url
+}
 
-const (
-	createJob = iota
-	uploadJob
-	closeJob
-	deleteJob
-	jobInfo
-	success
-	failure
-	unprocessed
-)
+//type endpointType int
+//
+//const (
+//	createJob = iota
+//	uploadJob
+//	closeJob
+//	deleteJob
+//	jobInfo
+//	success
+//	failure
+//	unprocessed
+//)

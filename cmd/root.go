@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-)
+	)
 
 var cfgFile string
 var quietFlag bool
@@ -43,8 +43,7 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.data-cmd.yaml)")
-
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/data-cmd/config.yaml)")
 	rootCmd.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "when set, suppresses output to stdout")
 
 	// Cobra also supports local flags, which will only run
@@ -66,12 +65,15 @@ func initConfig() {
 		}
 
 		// Search config in home directory with name ".data-cmd" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".data-cmd")
+		viper.AddConfigPath(home + "/.config/data-cmd")
+		viper.AddConfigPath("/etc/data-cmd")
+		viper.AddConfigPath(".")
+		viper.SetConfigName("config")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
 
+	// TODO deal with!
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
