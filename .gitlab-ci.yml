@@ -9,11 +9,12 @@ before_script:
   - dep ensure
 
 build-project:
-  - stage: build
-  - script:
+  stage: build
+  script:
     - go build
+
 test-project:
-  - stage: test
-  - script:
+  stage: test
+  script:
     - go test -v -cover ./...
 
