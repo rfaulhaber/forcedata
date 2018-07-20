@@ -1,14 +1,14 @@
 package auth
 
 import (
-	"testing"
 	"bytes"
-	"strings"
-	"io/ioutil"
-	"os"
-	"log"
 	"encoding/json"
 	"github.com/google/go-cmp/cmp"
+	"io/ioutil"
+	"log"
+	"os"
+	"strings"
+	"testing"
 )
 
 func TestAuthenticatePromptSavesInfo(t *testing.T) {

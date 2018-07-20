@@ -1,13 +1,13 @@
 package job
 
 import (
-	"github.com/rfaulhaber/force-data/auth"
-	"net/http"
-	"encoding/json"
 	"bytes"
+	"encoding/json"
+	"github.com/rfaulhaber/force-data/auth"
 	"io/ioutil"
 	"log"
-	)
+	"net/http"
+)
 
 const latestVersion = "43.0"
 
@@ -16,7 +16,7 @@ type Job struct {
 	Done   chan bool
 
 	jobID   string
-	jobURL string
+	jobURL  string
 	session auth.SFSession
 	config  JobConfig
 }
@@ -69,7 +69,7 @@ func (j *Job) Create() {
 	req, _ := http.NewRequest("POST", endpoint, bytes.NewReader(reqBody))
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authentication", "Bearer " + j.session.Token)
+	req.Header.Add("Authentication", "Bearer "+j.session.Token)
 
 	client := http.DefaultClient
 
@@ -99,7 +99,7 @@ func (j *Job) Upload(files ...string) {
 
 	readFiles := make([][]byte, len(files))
 
-	for _,  path := range files {
+	for _, path := range files {
 		content, err := ioutil.ReadFile(path)
 
 		if err != nil {
@@ -128,7 +128,7 @@ func (j *Job) Upload(files ...string) {
 		}
 
 		if resp.StatusCode != 201 {
-			log.Fatalln("server responded with ", resp.StatusCode, "with file: " )
+			log.Fatalln("server responded with ", resp.StatusCode, "with file: ")
 		}
 	}
 }

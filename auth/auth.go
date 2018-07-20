@@ -54,7 +54,7 @@ func AuthenticatePrompt(in io.Reader, out io.Writer) SFConfig {
 	io.WriteString(out, "Password + security token: ")
 	password, _ := reader.ReadString('\n')
 
-	io.WriteString(out, "Login URL (" + defaultLoginURL + "):")
+	io.WriteString(out, "Login URL ("+defaultLoginURL+"):")
 	url, _ := reader.ReadString('\n')
 
 	if len(url) <= 1 {
