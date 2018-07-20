@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"bytes"
 	"io/ioutil"
+	"log"
 )
 
 const latestVersion = "43.0"
@@ -72,12 +73,20 @@ func (j *Job) Create() {
 	response, err := client.Do(req)
 
 	if err != nil {
-		// TODO handle
+		log.Fatalln("error in response", err)
 	}
 
 	respBody, err := ioutil.ReadAll(response.Body)
 
+	var info JobInfo
 
+	err = json.Unmarshal(respBody, &info)
+
+	if err != nil {
+		log.Fatalln("error in unmarshal", err)
+	}
+
+	j.jobID = info.ID
 }
 
 func (j *Job) Run() {

@@ -6,7 +6,6 @@ import (
 	"github.com/rfaulhaber/force-data/auth"
 	"github.com/spf13/cobra"
 	"log"
-	"net/http"
 	"os"
 )
 
@@ -47,12 +46,12 @@ func runAuthenticate(cmd *cobra.Command, args []string) {
 
 		config = conf
 	} else {
-		config = auth.AuthenticatePrompt()
+		config = auth.AuthenticatePrompt(os.Stdin, os.Stdout)
 	}
 
 	log.Println("config", config)
 
-	session, err := auth.GetSessionInfo(config, http.DefaultClient)
+	session, err := auth.GetSessionInfo(config)
 
 	if err != nil {
 		fmt.Println("something went wrong with getting your session info")

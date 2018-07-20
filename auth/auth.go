@@ -6,12 +6,10 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"text/template"
 )
@@ -44,30 +42,22 @@ type SFSession struct {
 	SessionID string `xml:"sessionId" json:"sessionId"`
 }
 
-type client interface {
-	Do(request *http.Request) (*http.Response, error)
+type Prompter interface {
+	Prompt(prompt string) string
 }
 
-type httpClient struct {
-	client *http.Client
-}
-
-func (c *httpClient) Do(request *http.Request) (*http.Response, error) {
-	return c.client.Do(request)
-}
-
-func AuthenticatePrompt() SFConfig {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Username: ")
+func AuthenticatePrompt(in io.Reader, out io.Writer) SFConfig {
+	reader := bufio.NewReader(in)
+	io.WriteString(out, "Username: ")
 	username, _ := reader.ReadString('\n')
 
-	fmt.Print("Password + security token: ")
+	io.WriteString(out, "Password + security token: ")
 	password, _ := reader.ReadString('\n')
 
-	fmt.Print("Login URL (" + defaultLoginURL + "):")
+	io.WriteString(out, "Login URL (" + defaultLoginURL + "):")
 	url, _ := reader.ReadString('\n')
 
-	if len(url) == 1 && []byte(url)[0] == 10 {
+	if len(url) <= 1 {
 		url = defaultLoginURL
 	}
 
@@ -98,7 +88,7 @@ type soapFault struct {
 
 // TODO write generic error handler?
 
-func GetSessionInfo(config SFConfig, c client) (SFSession, error) {
+func GetSessionInfo(config SFConfig) (SFSession, error) {
 	t, _ := template.New("login").Parse(authTemplate)
 
 	var buf bytes.Buffer
@@ -109,7 +99,9 @@ func GetSessionInfo(config SFConfig, c client) (SFSession, error) {
 	req.Header.Add("Content-Type", "text/xml")
 	req.Header.Add("SOAPAction", "login")
 
-	resp, err := c.Do(req)
+	client := http.DefaultClient
+
+	resp, err := client.Do(req)
 
 	if err != nil {
 		return SFSession{}, err
@@ -168,9 +160,10 @@ func AuthenticateFromFile(path string) (SFConfig, error) {
 		config.LoginURL = defaultLoginURL
 	}
 
-	if !strings.HasPrefix(config.LoginURL, "https://") {
-		config.LoginURL = "https://" + config.LoginURL
-	}
+	// TODO append http if not present?
+	//if !strings.HasPrefix(config.LoginURL, "https://") {
+	//	config.LoginURL = "https://" + config.LoginURL
+	//}
 
 	return config, nil
 }
