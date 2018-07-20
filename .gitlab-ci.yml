@@ -6,6 +6,9 @@ stages:
 
 before_script:
   - go get -u github.com/golang/dep/cmd/dep
+  - echo "${GOPATH}"
+  - cp -r /builds/rfaulhaber /go/src/github.com/rfaulhaber
+  - cd /go/src/github.com/rfaulhaber/force-data
   - dep ensure
 
 build-project:
