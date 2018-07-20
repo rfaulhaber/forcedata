@@ -16,6 +16,7 @@ type Job struct {
 	Done   chan bool
 
 	jobID   string
+	jobURL string
 	session auth.SFSession
 	config  JobConfig
 }
@@ -54,6 +55,7 @@ func NewJob(config JobConfig, session auth.SFSession) *Job {
 		make(chan JobInfo),
 		make(chan bool),
 		"",
+		"",
 		session,
 		config,
 	}
@@ -67,6 +69,7 @@ func (j *Job) Create() {
 	req, _ := http.NewRequest("POST", endpoint, bytes.NewReader(reqBody))
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authentication", "Bearer " + j.session.Token)
 
 	client := http.DefaultClient
 
@@ -87,9 +90,14 @@ func (j *Job) Create() {
 	}
 
 	j.jobID = info.ID
+	j.jobURL = info.ContentURL
 }
 
-func (j *Job) Run() {
+func (j *Job) Upload(files ...string) {
+
+}
+
+func (j *Job) Watch() {
 
 }
 

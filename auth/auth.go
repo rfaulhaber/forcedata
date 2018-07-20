@@ -39,7 +39,7 @@ type SFConfig struct {
 
 type SFSession struct {
 	ServerURL string `xml:"serverUrl" json:"serverUrl"`
-	SessionID string `xml:"sessionId" json:"sessionId"`
+	Token     string `xml:"sessionId" json:"sessionId"`
 }
 
 type Prompter interface {
