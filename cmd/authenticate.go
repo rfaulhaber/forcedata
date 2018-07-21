@@ -26,12 +26,18 @@ to quickly create a Cobra application.`,
 
 var fileFlag bool
 var outFlag string
+var usernameFlag string
+var passFlag string
+var stdinFlag bool
 
 func init() {
 	rootCmd.AddCommand(authenticateCmd)
 
-	authenticateCmd.Flags().BoolVar(&fileFlag, "file", false, "if set, loads in username, password, and login URL from a configuration file")
+	authenticateCmd.Flags().BoolVar(&fileFlag, "file", false, "Load user credentials from file")
 	authenticateCmd.Flags().StringVar(&outFlag, "out", "", "directory to write session file to. if blank, writes to stdout")
+	authenticateCmd.Flags().StringVarP(&usernameFlag, "username", "u", "", "Username")
+	authenticateCmd.Flags().StringVarP(&passFlag, "password", "p", "", "Password")
+	authenticateCmd.Flags().BoolVar(&stdinFlag, "stdin", false, "Read password from stdin")
 }
 
 func runAuthenticate(cmd *cobra.Command, args []string) {
