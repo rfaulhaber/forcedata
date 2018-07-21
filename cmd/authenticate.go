@@ -25,22 +25,35 @@ to quickly create a Cobra application.`,
 }
 
 var fileFlag bool
-var outFlag string
 var usernameFlag string
 var passFlag string
 var stdinFlag bool
+var clientIDFlag string
+var clientSecretFlag string
 
 func init() {
 	rootCmd.AddCommand(authenticateCmd)
 
 	authenticateCmd.Flags().BoolVar(&fileFlag, "file", false, "Load user credentials from file")
-	authenticateCmd.Flags().StringVar(&outFlag, "out", "", "directory to write session file to. if blank, writes to stdout")
 	authenticateCmd.Flags().StringVarP(&usernameFlag, "username", "u", "", "Username")
 	authenticateCmd.Flags().StringVarP(&passFlag, "password", "p", "", "Password")
+	authenticateCmd.Flags().StringVar(&clientIDFlag, "client-id", "", "Client ID, the Consumer Key field to the connected app.")
+	authenticateCmd.Flags().StringVar(&clientSecretFlag, "client-secret", "", "Client Secret, the Consumer Secret field to the connected app.")
 	authenticateCmd.Flags().BoolVar(&stdinFlag, "stdin", false, "Read password from stdin")
 }
 
 func runAuthenticate(cmd *cobra.Command, args []string) {
+	// if file specified, authenticate from file. file must either have client key and url or username, pass, and url
+	if fileFlag {
+		// if file contains username, password, authenticate with credentials
+		// else, attempt to authenticate using user agent
+	} else {
+		// if client id specified, use that
+		// else if username, pass, and url flag specified, use those
+		// else if only some flags specified, prompt for missing
+	}
+
+	// once authenticated, attempt to save default config file
 	var config auth.SFConfig
 	if fileFlag {
 		conf, err := auth.AuthenticateFromFile(args[0])
@@ -65,8 +78,6 @@ func runAuthenticate(cmd *cobra.Command, args []string) {
 	}
 
 	writeOut(session)
-
-	fmt.Println(outFlag)
 }
 
 func validateArgs(cmd *cobra.Command, args []string) error {

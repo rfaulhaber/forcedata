@@ -17,13 +17,48 @@ const (
 	credEndpoint = "/token"
 )
 
-type AuthRequest struct {
-	URL string
-	ResponseType string
-	ClientId string
+// TODO implement YAML
+
+type Credential struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	ClientID string `json:"clientID"`
+	ClientSecret string `json:"clientSecret"`
+	URL string `json:"URL"`
 	RedirectURI string
-	Username string
-	Password string
+}
+
+// if true, these credentials are used for username / password authentication
+func (c Credential) IsCredFlow() bool {
+	return c.Username != "" && c.Password != "" && c.ClientID != "" && c.ClientSecret != ""
+}
+
+// if true, these credentials are used for user flow authentication
+func (c Credential) IsUserFlow() bool {
+	return c.Username == "" && c.Password == "" && c.ClientID != "" && c.ClientSecret == ""
+}
+
+func (c Credential) Encode(redirectURI string) string {
+	var u *url.URL
+	q := u.Query()
+
+	if c.IsUserFlow() {
+		u, _ = url.Parse(strings.TrimSuffix(c.URL, "/") + oauthEndpoint + credEndpoint)
+		q.Set("response_type", "token")
+		q.Set("client_id", c.ClientID)
+		q.Set("redirect_uri", redirectURI)
+	} else {
+		u, _ = url.Parse(strings.TrimSuffix(c.URL, "/") + oauthEndpoint + authEndpoint)
+		q.Set("grant_type", "password")
+		q.Set("client_id", c.ClientID)
+		q.Set("client_secret", c.ClientSecret)
+		q.Set("username", c.Username)
+		q.Set("password", c.Password)
+	}
+
+	u.RawQuery = q.Encode()
+
+	return u.String()
 }
 
 type AuthResponse struct {
@@ -38,19 +73,19 @@ type AuthResponse struct {
 	Signature string `json:"signature"`
 }
 
-func Encode(rq AuthRequest) string {
+func EncodeURL(c Credential) string {
 	var u *url.URL
 
-	if rq.Username != "" && rq.Password != "" {
-		u, _ = url.Parse(strings.TrimSuffix(rq.URL, "/") + credEndpoint)
+	if c.IsUserFlow() {
+		u, _ = url.Parse(strings.TrimSuffix(c.URL, "/") + oauthEndpoint + credEndpoint)
 	} else {
-		u, _ = url.Parse(strings.TrimSuffix(rq.URL, "/") + authEndpoint)
+		u, _ = url.Parse(strings.TrimSuffix(c.URL, "/") + oauthEndpoint + authEndpoint)
 	}
 
 	q := u.Query()
 	q.Set("response_type", "token")
-	q.Set("client_id", rq.ClientId)
-	q.Set("redirect_uri", rq.RedirectURI)
+	q.Set("client_id", c.ClientID)
+	q.Set("redirect_uri", c.RedirectURI)
 
 	u.RawQuery = q.Encode()
 
@@ -94,57 +129,75 @@ func DecodeJSON(data []byte) AuthResponse {
 	return resp
 }
 
-func SendAuthRequest(authReq AuthRequest) (AuthResponse, error) {
+type Opener interface {
+	OpenPath(path string)
+}
+
+type BrowserOpener struct {
+	path string
+}
+
+func (b BrowserOpener) OpenPath(path string) {
+	open.Start(b.path)
+}
+
+func SendAuthRequest(c Credential) (AuthResponse, error) {
 	// if username, send request and wait for response
-	if isCred(authReq) {
-		req, _ := http.NewRequest("POST", Encode(authReq), nil)
-
-		client := http.DefaultClient
-
-		resp, err := client.Do(req)
-
-		if err != nil {
-			return AuthResponse{}, err
-		}
-
-		respBody, err := ioutil.ReadAll(resp.Body)
-
-		if err != nil {
-			return AuthResponse{}, err
-		}
-
-		var authResp AuthResponse
-
-		err = json.Unmarshal(respBody, &authResp)
-
-		return authResp, err
+	if c.IsUserFlow() {
+		return sendUserFlow(c)
+	} else if c.IsCredFlow() {
+		return sendCredFlow(c)
 	} else {
-		s := Server{
-			Port: "42111",
-			C: make(chan string),
-		}
+		return AuthResponse{}, errors.New("invalid credential format")
+	}
+}
 
-		open.Start(Encode(authReq))
+func sendCredFlow(c Credential) (AuthResponse, error) {
+	req, _ := http.NewRequest("POST", EncodeURL(c), nil)
 
-		go s.Start()
+	client := http.DefaultClient
 
-		ticker := time.NewTicker(3 * time.Minute)
+	resp, err := client.Do(req)
 
-		for {
-			select {
-				case uri := <- s.C:
-					return DecodeURL(uri), nil
-				case <- ticker.C:
-					close(s.C)
-					// TODO make custom error
-					return AuthResponse{}, errors.New("server response timed out")
-
-			}
-		}
+	if err != nil {
+		return AuthResponse{}, err
 	}
 
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return AuthResponse{}, err
+	}
+
+	var authResp AuthResponse
+
+	err = json.Unmarshal(respBody, &authResp)
+
+	return authResp, err
 }
 
-func isCred(req AuthRequest) bool {
-	return req.Username != "" && req.Password != ""
+func sendUserFlow(c Credential) (AuthResponse, error) {
+	s := Server{
+		Port: "42111",
+		C: make(chan string),
+	}
+
+	open.Start(EncodeURL(c))
+
+	go s.Start()
+
+	ticker := time.NewTicker(3 * time.Minute)
+
+	for {
+		select {
+		case uri := <- s.C:
+			return DecodeURL(uri), nil
+		case <- ticker.C:
+			close(s.C)
+			// TODO make custom error
+			return AuthResponse{}, errors.New("server response timed out")
+
+		}
+	}
 }
+

@@ -14,23 +14,9 @@ import (
 	"text/template"
 )
 
-// TODO rewrite using connected app, oauth flow
-
 const defaultLoginURL = "https://login.salesforce.com"
 
-const authTemplate = `<?xml version="1.0" encoding="utf-8" ?>
-		<env:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-					  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-					  xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
-		<env:Body>
-			<n1:login xmlns:n1="urn:partner.soap.sforce.com">
-				<n1:username>{{.Username}}</n1:username>
-				<n1:password>{{.Password}}</n1:password>
-			</n1:login>
-		</env:Body>
-	</env:Envelope>`
 
-// TODO implement other formats?
 type SFConfig struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -40,10 +26,6 @@ type SFConfig struct {
 type SFSession struct {
 	ServerURL string `xml:"serverUrl" json:"serverUrl"`
 	Token     string `xml:"sessionId" json:"sessionId"`
-}
-
-type Prompter interface {
-	Prompt(prompt string) string
 }
 
 func AuthenticatePrompt(in io.Reader, out io.Writer) SFConfig {
