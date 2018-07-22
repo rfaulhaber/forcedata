@@ -1,156 +1,55 @@
 package auth
 
 import (
-	"bufio"
-	"bytes"
-	"encoding/json"
-	"encoding/xml"
-	"errors"
-	"io"
+	"strings"
 	"io/ioutil"
 	"log"
-	"net/http"
-	"strings"
-	"text/template"
+	"encoding/json"
+	"io"
+	"errors"
 )
+
+// TODO write custom errors for Salesforce errors!
 
 const defaultLoginURL = "https://login.salesforce.com"
 
-
-type SFConfig struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	LoginURL string `json:"loginUrl"`
+type Session struct {
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	RefreshToken string `json:"refresh_token"`
+	Scope        string `json:"scope"`
+	State        string `json:"state"`
+	InstanceURL  string `json:"instance_url"`
+	ID           string `json:"id"`
+	IssuedAt     string `json:"issued_at"`
+	Signature    string `json:"signature"`
 }
 
-type SFSession struct {
-	ServerURL string `xml:"serverUrl" json:"serverUrl"`
-	Token     string `xml:"sessionId" json:"sessionId"`
-}
+// func AuthenticateFromPrompt(in io.Reader, out io.Writer) (Session, err)
 
-func AuthenticatePrompt(in io.Reader, out io.Writer) SFConfig {
-	reader := bufio.NewReader(in)
-	io.WriteString(out, "Username: ")
-	username, _ := reader.ReadString('\n')
-
-	io.WriteString(out, "Password + security token: ")
-	password, _ := reader.ReadString('\n')
-
-	io.WriteString(out, "Login URL ("+defaultLoginURL+"):")
-	url, _ := reader.ReadString('\n')
-
-	if len(url) <= 1 {
-		url = defaultLoginURL
-	}
-
-	username, password, url = cleanInput(username, password, url)
-
-	return SFConfig{
-		username,
-		password,
-		url,
-	}
-}
-
-type soapResult struct {
-	XMLName xml.Name `xml:"Envelope"`
-	Body    struct {
-		LoginResponse struct {
-			Result SFSession `xml:"result"`
-		} `xml:"loginResponse"`
-		Fault soapFault `xml:"Fault"`
-	} `xml:"Body"`
-	ServerURL string `xml:"serverUrl"`
-}
-
-type soapFault struct {
-	FaultCode   string `xml:"faultcode"`
-	FaultString string `xml:"faultstring"`
-}
-
-// TODO write generic error handler?
-
-func GetSessionInfo(config SFConfig) (SFSession, error) {
-	t, _ := template.New("login").Parse(authTemplate)
-
-	var buf bytes.Buffer
-
-	t.Execute(&buf, config)
-
-	req, _ := http.NewRequest("POST", config.LoginURL+"/services/Soap/u/43.0", &buf)
-	req.Header.Add("Content-Type", "text/xml")
-	req.Header.Add("SOAPAction", "login")
-
-	client := http.DefaultClient
-
-	resp, err := client.Do(req)
+func AuthenticateFromFile(path string) (Session, error) {
+	creds, err := getCredsFromFile(path)
 
 	if err != nil {
-		return SFSession{}, err
+		return Session{}, err
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
-
-	log.Println("server response", string(respBody))
+	err = validateCreds(creds)
 
 	if err != nil {
-		return SFSession{}, err
+		return Session{}, err
 	}
 
-	// TODO handle auth error
-	// TODO custom errors?
-
-	var sResult soapResult
-
-	err = xml.Unmarshal(respBody, &sResult)
+	resp, err := SendAuthRequest(creds, DefaultOpener)
 
 	if err != nil {
-		return SFSession{}, err
+		return Session{}, err
 	}
 
-	log.Println("fault", sResult.Body.Fault)
-
-	if sResult.Body.Fault != (soapFault{}) {
-		return SFSession{}, errors.New("server responded with: " + sResult.Body.Fault.FaultString)
-	}
-
-	return sResult.Body.LoginResponse.Result, nil
+	return resp, nil
 }
 
-// TODO should this be dealt with via --config?
-func AuthenticateFromFile(path string) (SFConfig, error) {
-	fileBytes, err := ioutil.ReadFile(path)
-
-	log.Println("path", path)
-
-	if err != nil {
-		log.Println("authentication from file error")
-		return SFConfig{}, err
-	}
-
-	var config SFConfig
-
-	// TODO deal with different files
-	err = json.Unmarshal(fileBytes, &config)
-
-	if err != nil {
-		log.Println("json unmarshal error")
-		return SFConfig{}, err
-	}
-
-	if len(config.LoginURL) == 0 {
-		config.LoginURL = defaultLoginURL
-	}
-
-	// TODO append http if not present?
-	//if !strings.HasPrefix(config.LoginURL, "https://") {
-	//	config.LoginURL = "https://" + config.LoginURL
-	//}
-
-	return config, nil
-}
-
-func WriteSession(session SFSession, writer io.Writer) {
+func WriteSession(session Session, writer io.Writer) {
 	sessionJSON, _ := json.MarshalIndent(session, "", "\t")
 	io.WriteString(writer, string(sessionJSON))
 }
@@ -165,4 +64,42 @@ func cleanInput(username, password, url string) (string, string, string) {
 
 func trimString(str string) string {
 	return strings.TrimSpace(strings.TrimSuffix(str, "\n"))
+}
+
+func getCredsFromFile(path string) (Credential, error) {
+	fileBytes, err := ioutil.ReadFile(path)
+
+	log.Println("path", path)
+
+	if err != nil {
+		log.Println("authentication from file error")
+		return Credential{}, err
+	}
+
+	var creds Credential
+
+	err = json.Unmarshal(fileBytes, &creds)
+
+	if err != nil {
+		log.Println("json unmarshal error")
+		return Credential{}, err
+	}
+
+	creds.RedirectURI = "http://localhost:42111/callback"
+
+	if creds.URL == "" {
+		creds.URL = defaultLoginURL
+	}
+
+	return creds, nil
+}
+
+// TODO make custom error types!
+
+func validateCreds(creds Credential) error {
+	if creds.ClientID == "" {
+		return errors.New("missing required field ClientID")
+	} else {
+		return nil
+	}
 }

@@ -30,6 +30,7 @@ var passFlag string
 var stdinFlag bool
 var clientIDFlag string
 var clientSecretFlag string
+var outFlag string
 
 func init() {
 	rootCmd.AddCommand(authenticateCmd)
@@ -40,6 +41,9 @@ func init() {
 	authenticateCmd.Flags().StringVar(&clientIDFlag, "client-id", "", "Client ID, the Consumer Key field to the connected app.")
 	authenticateCmd.Flags().StringVar(&clientSecretFlag, "client-secret", "", "Client Secret, the Consumer Secret field to the connected app.")
 	authenticateCmd.Flags().BoolVar(&stdinFlag, "stdin", false, "Read password from stdin")
+
+	// TODO should only be specified with prompt?
+	authenticateCmd.Flags().StringVar(&outFlag, "out", "", "Writes saved session info to specified file instead of stdout")
 }
 
 func runAuthenticate(cmd *cobra.Command, args []string) {
@@ -47,37 +51,21 @@ func runAuthenticate(cmd *cobra.Command, args []string) {
 	if fileFlag {
 		// if file contains username, password, authenticate with credentials
 		// else, attempt to authenticate using user agent
+		session, err := auth.AuthenticateFromFile(args[0])
+
+		if err != nil {
+			log.Println("something went wrong, worhthwile error messages aren't implemented yet!")
+			log.Fatalln("error message:", err)
+		}
+
+		writeOut(session)
 	} else {
 		// if client id specified, use that
 		// else if username, pass, and url flag specified, use those
 		// else if only some flags specified, prompt for missing
-	}
-
-	// once authenticated, attempt to save default config file
-	var config auth.SFConfig
-	if fileFlag {
-		conf, err := auth.AuthenticateFromFile(args[0])
-
-		if err != nil {
-			log.Println("from file error")
-			log.Fatalln(err)
-		}
-
-		config = conf
-	} else {
-		config = auth.AuthenticatePrompt(os.Stdin, os.Stdout)
-	}
-
-	log.Println("config", config)
-
-	session, err := auth.GetSessionInfo(config)
-
-	if err != nil {
-		fmt.Println("something went wrong with getting your session info")
+		fmt.Println("authentication via prompt isn't implemented yet!")
 		os.Exit(1)
 	}
-
-	writeOut(session)
 }
 
 func validateArgs(cmd *cobra.Command, args []string) error {
@@ -90,11 +78,9 @@ func validateArgs(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func writeOut(session auth.SFSession) {
-	if len(outFlag) > 0 {
-		// TODO if outflag is dir, write to new file in dir
-		// TODO if outflag is file, write to file
-		outFile, err := os.Create(outFlag + "/session.json")
+func writeOut(session auth.Session) {
+	if outFlag != "" {
+		outFile, err := os.Create(outFlag)
 
 		if err != nil {
 			// only for development
