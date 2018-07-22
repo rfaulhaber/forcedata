@@ -24,13 +24,15 @@ to quickly create a Cobra application.`,
 	Run:  runAuthenticate,
 }
 
-var fileFlag bool
-var usernameFlag string
-var passFlag string
-var stdinFlag bool
-var clientIDFlag string
-var clientSecretFlag string
-var outFlag string
+var (
+	fileFlag bool
+	usernameFlag string
+	passFlag string
+	stdinFlag bool
+	clientIDFlag string
+	clientSecretFlag string
+	outFlag string
+)
 
 func init() {
 	rootCmd.AddCommand(authenticateCmd)
@@ -41,6 +43,7 @@ func init() {
 	authenticateCmd.Flags().StringVar(&clientIDFlag, "client-id", "", "Client ID, the Consumer Key field to the connected app.")
 	authenticateCmd.Flags().StringVar(&clientSecretFlag, "client-secret", "", "Client Secret, the Consumer Secret field to the connected app.")
 	authenticateCmd.Flags().BoolVar(&stdinFlag, "stdin", false, "Read password from stdin")
+	authenticateCmd.Flags().StringVarP(&outFlag, "out", "o", "", "Writes session information to specified location instead of stdout.")
 
 	// TODO should only be specified with prompt?
 	authenticateCmd.Flags().StringVar(&outFlag, "out", "", "Writes saved session info to specified file instead of stdout")
@@ -54,8 +57,13 @@ func runAuthenticate(cmd *cobra.Command, args []string) {
 		session, err := auth.AuthenticateFromFile(args[0])
 
 		if err != nil {
-			log.Println("something went wrong, worhthwile error messages aren't implemented yet!")
-			log.Fatalln("error message:", err)
+			switch err.(type) {
+			case auth.MissingFieldError:
+				fmt.Println("A required field for authentication is missing from your file. ", err.Error())
+			default:
+				log.Println("something went wrong, worhthwile error messages aren't implemented yet!")
+				log.Fatalln("error message:", err)
+			}
 		}
 
 		writeOut(session)

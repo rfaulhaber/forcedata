@@ -6,19 +6,43 @@ import (
 	"log"
 	"encoding/json"
 	"io"
-	"errors"
+	"net/url"
+	"net/http"
 )
 
 // TODO write custom errors for Salesforce errors!
 
-const defaultLoginURL = "https://login.salesforce.com"
+const (
+	defaultLoginURL = "https://login.salesforce.com"
+	authEndpoint = "/services/oauth2/token"
+)
+
+type Credential struct {
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	URL          string `json:"url"`
+}
+
+func (c Credential) Encode() string {
+	var u *url.URL
+
+	u, _ = url.Parse(strings.TrimSuffix(c.URL, "/") + authEndpoint)
+	q := u.Query()
+	q.Set("grant_type", "password")
+	q.Set("client_id", c.ClientID)
+	q.Set("client_secret", c.ClientSecret)
+	q.Set("username", c.Username)
+	q.Set("password", c.Password)
+
+	u.RawQuery = q.Encode()
+
+	return u.String()
+}
 
 type Session struct {
 	AccessToken  string `json:"access_token"`
-	TokenType    string `json:"token_type"`
-	RefreshToken string `json:"refresh_token"`
-	Scope        string `json:"scope"`
-	State        string `json:"state"`
 	InstanceURL  string `json:"instance_url"`
 	ID           string `json:"id"`
 	IssuedAt     string `json:"issued_at"`
@@ -40,7 +64,7 @@ func AuthenticateFromFile(path string) (Session, error) {
 		return Session{}, err
 	}
 
-	resp, err := SendAuthRequest(creds, DefaultOpener)
+	resp, err := SendAuthRequest(creds)
 
 	if err != nil {
 		return Session{}, err
@@ -52,6 +76,28 @@ func AuthenticateFromFile(path string) (Session, error) {
 func WriteSession(session Session, writer io.Writer) {
 	sessionJSON, _ := json.MarshalIndent(session, "", "\t")
 	io.WriteString(writer, string(sessionJSON))
+}
+
+func SendAuthRequest(c Credential) (Session, error) {
+	req, _ := http.NewRequest("POST", c.Encode(), nil)
+
+	client := http.DefaultClient
+
+	log.Println("making request for cred flow:", c.Encode())
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return Session{}, err
+	}
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return Session{}, err
+	}
+
+	return decodeJSON(respBody)
 }
 
 func cleanInput(username, password, url string) (string, string, string) {
@@ -85,8 +131,6 @@ func getCredsFromFile(path string) (Credential, error) {
 		return Credential{}, err
 	}
 
-	creds.RedirectURI = "http://localhost:42111/callback"
-
 	if creds.URL == "" {
 		creds.URL = defaultLoginURL
 	}
@@ -94,12 +138,36 @@ func getCredsFromFile(path string) (Credential, error) {
 	return creds, nil
 }
 
-// TODO make custom error types!
+type MissingFieldError struct {
+	field string
+}
+
+func (e MissingFieldError) Error() string {
+	return "Missing required field: " + e.field
+}
+
+func (e MissingFieldError) Field() string {
+	return e.field
+}
 
 func validateCreds(creds Credential) error {
 	if creds.ClientID == "" {
-		return errors.New("missing required field ClientID")
+		return MissingFieldError{"client_id"}
+	} else if creds.ClientSecret == "" {
+		return MissingFieldError{"client_secret"}
+	} else if creds.Username == "" {
+		return MissingFieldError{"username"}
+	} else if creds.Password == "" {
+		return MissingFieldError{"password"}
 	} else {
 		return nil
 	}
+}
+
+func decodeJSON(data []byte) (Session, error) {
+	var resp Session
+
+	err := json.Unmarshal(data, &resp)
+
+	return resp, err
 }
