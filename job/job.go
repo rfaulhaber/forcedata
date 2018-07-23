@@ -17,7 +17,7 @@ type Job struct {
 
 	jobID   string
 	jobURL  string
-	session auth.SFSession
+	session auth.Session
 	config  JobConfig
 }
 
@@ -50,7 +50,7 @@ type JobConfig struct {
 	Operation string `json:"operation"`
 }
 
-func NewJob(config JobConfig, session auth.SFSession) *Job {
+func NewJob(config JobConfig, session auth.Session) *Job {
 	return &Job{
 		make(chan JobInfo),
 		make(chan bool),
@@ -62,14 +62,14 @@ func NewJob(config JobConfig, session auth.SFSession) *Job {
 }
 
 func (j *Job) Create() {
-	endpoint := j.session.ServerURL + "/services/data/v" + latestVersion + "/jobs/ingest"
+	endpoint := j.session.InstanceURL + "/services/data/v" + latestVersion + "/jobs/ingest"
 
 	reqBody, _ := json.Marshal(j.config)
 
 	req, _ := http.NewRequest("POST", endpoint, bytes.NewReader(reqBody))
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authentication", "Bearer "+j.session.Token)
+	req.Header.Add("Authentication", "Bearer "+j.session.AccessToken)
 
 	client := http.DefaultClient
 

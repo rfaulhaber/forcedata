@@ -1,15 +1,15 @@
 package auth
 
 import (
+	"bytes"
 	"encoding/json"
+	"github.com/google/go-cmp/cmp"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"testing"
-	"github.com/google/go-cmp/cmp"
-	"bytes"
 )
 
 func TestCredential_Encode(t *testing.T) {

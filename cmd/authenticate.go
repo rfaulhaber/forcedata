@@ -25,13 +25,13 @@ to quickly create a Cobra application.`,
 }
 
 var (
-	fileFlag bool
-	usernameFlag string
-	passFlag string
-	stdinFlag bool
-	clientIDFlag string
+	fileFlag         bool
+	usernameFlag     string
+	passFlag         string
+	stdinFlag        bool
+	clientIDFlag     string
 	clientSecretFlag string
-	outFlag string
+	outFlag          string
 )
 
 func init() {

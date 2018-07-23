@@ -1,20 +1,20 @@
 package auth
 
 import (
-	"strings"
-	"io/ioutil"
-	"log"
 	"encoding/json"
 	"io"
-	"net/url"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"net/url"
+	"strings"
 )
 
 // TODO write custom errors for Salesforce errors!
 
 const (
 	defaultLoginURL = "https://login.salesforce.com"
-	authEndpoint = "/services/oauth2/token"
+	authEndpoint    = "/services/oauth2/token"
 )
 
 type Credential struct {
@@ -42,11 +42,11 @@ func (c Credential) Encode() string {
 }
 
 type Session struct {
-	AccessToken  string `json:"access_token"`
-	InstanceURL  string `json:"instance_url"`
-	ID           string `json:"id"`
-	IssuedAt     string `json:"issued_at"`
-	Signature    string `json:"signature"`
+	AccessToken string `json:"access_token"`
+	InstanceURL string `json:"instance_url"`
+	ID          string `json:"id"`
+	IssuedAt    string `json:"issued_at"`
+	Signature   string `json:"signature"`
 }
 
 // TODO implement!
