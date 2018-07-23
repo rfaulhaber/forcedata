@@ -6,16 +6,16 @@ OUTDIR = ./out
 all: linux mac windows freebsd
 
 linux: main.go
-	env GOOS=linux $(ARGH) $(GOBUILD) -o $(OUTDIR)/data-linux $(SOURCE)
+	env GOOS=linux $(ARGH) $(GOBUILD) -o $(OUTDIR)/forcedata-linux $(SOURCE)
 
 mac: main.go
-	env GOOS=darwin $(ARCH) $(GOBUILD) -o $(OUTDIR)/data-mac $(SOURCE)
+	env GOOS=darwin $(ARCH) $(GOBUILD) -o $(OUTDIR)/forcedata-mac $(SOURCE)
 
 windows: main.go
-	env GOOS=windows $(ARCH) $(GOBUILD) -o $(OUTDIR)/data-windows.exe $(SOURCE)
+	env GOOS=windows $(ARCH) $(GOBUILD) -o $(OUTDIR)/forcedata-windows.exe $(SOURCE)
 
 freebsd: main.go
-	env GOOS=freebsd $(ARCH) $(GOBUILD) -o $(OUTDIR)/data-freebsd $(SOURCE)
+	env GOOS=freebsd $(ARCH) $(GOBUILD) -o $(OUTDIR)/forcedata-freebsd $(SOURCE)
 
 .PHONY: clean
 

@@ -44,7 +44,7 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/data-cmd/config.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/forcedata/config.yaml)")
 	rootCmd.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "when set, suppresses output to stdout")
 
 	// Cobra also supports local flags, which will only run
@@ -67,8 +67,8 @@ func initConfig() {
 
 		// Search config in home directory with name ".data-cmd" (without extension).
 		viper.AddConfigPath(".")
-		viper.AddConfigPath(home + "/.config/data-cmd")
-		viper.AddConfigPath("/etc/data-cmd")
+		viper.AddConfigPath(home + "/.config/forcedata")
+		viper.AddConfigPath("/etc/forcedata")
 		viper.SetConfigName("config")
 	}
 

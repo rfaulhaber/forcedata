@@ -55,7 +55,7 @@ func NewJob(config JobConfig, session auth.Session) *Job {
 		make(chan bool),
 		session,
 		config,
-		nil,
+		JobInfo{},
 	}
 }
 
