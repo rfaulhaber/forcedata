@@ -47,13 +47,13 @@ type JobInfo struct {
 type JobConfig struct {
 	Object    string `json:"object"`
 	Operation string `json:"operation"`
+	Delim string `json:"columnDelimiter"`
 }
 
 func NewJob(config JobConfig, session auth.Session) *Job {
 	return &Job{
 		make(chan JobInfo),
-		make(chan bool),
-		session,
+		make(chan bool), session,
 		config,
 		JobInfo{},
 	}

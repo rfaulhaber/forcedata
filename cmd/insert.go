@@ -9,6 +9,12 @@ import (
 	"log"
 )
 
+var (
+	objFlag string
+	delimFlag string
+)
+
+
 // insertCmd represents the insert command
 var insertCmd = &cobra.Command{
 	Use:   "insert",
@@ -31,6 +37,9 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	// insertCmd.PersistentFlags().String("foo", "", "A help for foo")
+	insertCmd.Flags().StringVar(&delimFlag, "delim", ",", "Delimiter used in all specified fiels (defaults to \",\")")
+	insertCmd.Flags().StringVar(&objFlag, "object", "", "Object being inserted.")
+	insertCmd.MarkFlagRequired("object")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
@@ -53,8 +62,9 @@ func runInsert(cmd *cobra.Command, args []string) {
 	log.Println("session url", session.InstanceURL)
 
 	config := job.JobConfig{
-		Object: "Contact",
+		Object: objFlag,
 		Operation: "insert",
+		Delim: delimFlag,
 	}
 
 	j := job.NewJob(config, session)
