@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/rfaulhaber/force-data/job"
+	"github.com/rfaulhaber/force-data/auth"
+	"log"
 )
 
 // insertCmd represents the insert command
@@ -36,5 +39,25 @@ func init() {
 
 func runInsert(cmd *cobra.Command, args []string) {
 	fmt.Println("attempting to insert: ", args)
-	fmt.Println("server", viper.GetString("serverURL"))
+	fmt.Println("server", viper.GetString("instance_url"))
+
+	session := auth.Session{}
+	err := viper.Unmarshal(&session)
+
+	log.Println("session", session)
+
+	if err != nil {
+		log.Fatalln("viper could not unmarshal", err)
+	}
+
+	log.Println("session url", session.InstanceURL)
+
+	config := job.JobConfig{
+		Object: "Contact",
+		Operation: "insert",
+	}
+
+	j := job.NewJob(config, session)
+
+	j.Create()
 }

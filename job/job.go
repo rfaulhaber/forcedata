@@ -15,10 +15,9 @@ type Job struct {
 	Status chan JobInfo
 	Done   chan bool
 
-	jobID   string
-	jobURL  string
 	session auth.Session
 	config  JobConfig
+	info JobInfo
 }
 
 type JobInfo struct {
@@ -54,22 +53,23 @@ func NewJob(config JobConfig, session auth.Session) *Job {
 	return &Job{
 		make(chan JobInfo),
 		make(chan bool),
-		"",
-		"",
 		session,
 		config,
+		nil,
 	}
 }
 
 func (j *Job) Create() {
 	endpoint := j.session.InstanceURL + "/services/data/v" + latestVersion + "/jobs/ingest"
 
+	log.Println("attempting to hit endpoint: ", endpoint)
+
 	reqBody, _ := json.Marshal(j.config)
 
 	req, _ := http.NewRequest("POST", endpoint, bytes.NewReader(reqBody))
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authentication", "Bearer "+j.session.AccessToken)
+	req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
 
 	client := http.DefaultClient
 
@@ -85,17 +85,19 @@ func (j *Job) Create() {
 
 	err = json.Unmarshal(respBody, &info)
 
+	log.Println("response", string(respBody))
+
 	if err != nil {
 		log.Fatalln("error in unmarshal", err)
 	}
 
-	j.setJobID(info.ID)
-	j.setJobID(info.ContentURL)
+	j.info = info
+	log.Println("info from server", info)
 }
 
 func (j *Job) Upload(files ...string) {
 	// TODO make async?
-	endpoint := j.jobURL + "/services/data/v" + latestVersion + "/jobs/ingest/" + j.jobID + "/batches"
+	endpoint := j.jobURL()
 
 	readFiles := make([][]byte, len(files))
 
@@ -150,23 +152,6 @@ func (j *Job) Delete() {
 
 // TODO handle getting successful, failed, and unprocessed jobs
 
-func (j *Job) setJobID(id string) {
-	j.jobID = id
+func (j *Job) jobURL() string {
+	return j.session.InstanceURL + j.info.ContentURL
 }
-
-func (j *Job) setJobURL(url string) {
-	j.jobURL = url
-}
-
-//type endpointType int
-//
-//const (
-//	createJob = iota
-//	uploadJob
-//	closeJob
-//	deleteJob
-//	jobInfo
-//	success
-//	failure
-//	unprocessed
-//)

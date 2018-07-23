@@ -42,11 +42,11 @@ func (c Credential) Encode() string {
 }
 
 type Session struct {
-	AccessToken string `json:"access_token"`
-	InstanceURL string `json:"instance_url"`
-	ID          string `json:"id"`
-	IssuedAt    string `json:"issued_at"`
-	Signature   string `json:"signature"`
+	AccessToken string `json:"access_token" mapstructure:"access_token"`
+	InstanceURL string `json:"instance_url" mapstructure:"instance_url"`
+	ID          string `json:"id" mapstructure:"id"`
+	IssuedAt    string `json:"issued_at" mapstructure:"issued_at"`
+	Signature   string `json:"signature" mapstructure:"signature"`
 }
 
 // TODO implement!
@@ -93,6 +93,8 @@ func SendAuthRequest(c Credential) (Session, error) {
 	}
 
 	respBody, err := ioutil.ReadAll(resp.Body)
+
+	log.Println("raw response", string(respBody))
 
 	if err != nil {
 		return Session{}, err
