@@ -7,6 +7,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"log"
 )
 
 var cfgFile string
@@ -65,9 +66,9 @@ func initConfig() {
 		}
 
 		// Search config in home directory with name ".data-cmd" (without extension).
+		viper.AddConfigPath(".")
 		viper.AddConfigPath(home + "/.config/data-cmd")
 		viper.AddConfigPath("/etc/data-cmd")
-		viper.AddConfigPath(".")
 		viper.SetConfigName("config")
 	}
 
@@ -76,6 +77,6 @@ func initConfig() {
 	// TODO deal with!
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		log.Println("Using config file:", viper.ConfigFileUsed())
 	}
 }
