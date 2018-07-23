@@ -43,7 +43,6 @@ func init() {
 	authenticateCmd.Flags().StringVar(&clientIDFlag, "client-id", "", "Client ID, the Consumer Key field to the connected app.")
 	authenticateCmd.Flags().StringVar(&clientSecretFlag, "client-secret", "", "Client Secret, the Consumer Secret field to the connected app.")
 	authenticateCmd.Flags().BoolVar(&stdinFlag, "stdin", false, "Read password from stdin")
-	authenticateCmd.Flags().StringVarP(&outFlag, "out", "o", "", "Writes session information to specified location instead of stdout.")
 
 	// TODO should only be specified with prompt?
 	authenticateCmd.Flags().StringVar(&outFlag, "out", "", "Writes saved session info to specified file instead of stdout")

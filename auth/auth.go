@@ -49,6 +49,7 @@ type Session struct {
 	Signature    string `json:"signature"`
 }
 
+// TODO implement!
 // func AuthenticateFromPrompt(in io.Reader, out io.Writer) (Session, err)
 
 func AuthenticateFromFile(path string) (Session, error) {
