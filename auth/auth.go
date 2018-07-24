@@ -1,6 +1,9 @@
 package auth
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -8,10 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"errors"
 )
 
 // TODO write custom errors for Salesforce errors!
@@ -105,20 +104,12 @@ func SendAuthRequest(c Credential) (Session, error) {
 		return Session{}, err
 	}
 
-	session, err := decodeJSON(respBody)
+	return decodeJSON(respBody)
+}
 
-	if err != nil {
-		return Session{}, err
-	}
-
-	valid := validSignature(session.ID + session.IssuedAt, session.Signature, c.ClientSecret)
-
-	if !valid {
-		// TODO create custom error
-		return Session{}, errors.New("signature does not match expected value")
-	}
-
-	return session, err
+// Returns true if signature is valid
+func ValidateSession(session Session, secret string) bool {
+	return validSignature(session.ID + session.IssuedAt, session.Signature, secret)
 }
 
 func cleanInput(username, password, url string) (string, string, string) {
