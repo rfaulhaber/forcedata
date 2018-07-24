@@ -11,60 +11,59 @@ import (
 
 const latestVersion = "43.0"
 
-
 var delimMap = map[string]string{
-	"`": "BACKQUOTE",
-	"^": "CARET",
-	",": "COMMA",
-	"|": "PIPE",
-	";": "SEMICOLON",
+	"`":   "BACKQUOTE",
+	"^":   "CARET",
+	",":   "COMMA",
+	"|":   "PIPE",
+	";":   "SEMICOLON",
 	"\\t": "TAB",
 }
 
+// Returns true if valid delim, and returns name. Otherwise returns false.
+func GetDelimName(delim string) (string, bool) {
+	name, ok := delimMap[delim]
+	return name, ok
+}
+
 type JobInfo struct {
-	ApexProcessingTime      uint   `json:"apexProcessingTime"`
-	APIActiveProcessingTime int    `json:"apiActiveProcessingTime"`
+	ApexProcessingTime      uint    `json:"apexProcessingTime"`
+	APIActiveProcessingTime int     `json:"apiActiveProcessingTime"`
 	APIVersion              float32 `json:"apiVersion"`
-	ColumnDelimiter         string `json:"columnDelimiter"`
-	ConcurrencyMode         string `json:"concurrencyMode"`
-	ContentType             string `json:"contentType"`
-	ContentURL              string `json:"contentUrl"`
-	CreatedByID             string `json:"createdById"`
-	CreatedDate             string `json:"createdDate"`
-	ExternalIdFieldName     string `json:"externalIdFieldName"`
-	ID                      string `json:"id"`
-	JobType                 string `json:"jobType"`
-	LineEnding              string `json:"lineEnding"`
-	RecordsFailed           uint   `json:"numberRecordsFailed"`
-	RecordsProcessed        uint   `json:"numberRecordsProcessed"`
-	Retries                 uint   `json:"retries"`
-	Object                  string `json:"object"`
-	Operation               string `json:"operation"`
-	State                   string `json:"state"`
-	SystemModstamp          string `json:"SystemModstamp"`
-	TotalProcessingTime     uint   `json:"totalProcessingTime"`
+	ColumnDelimiter         string  `json:"columnDelimiter"`
+	ConcurrencyMode         string  `json:"concurrencyMode"`
+	ContentType             string  `json:"contentType"`
+	ContentURL              string  `json:"contentUrl"`
+	CreatedByID             string  `json:"createdById"`
+	CreatedDate             string  `json:"createdDate"`
+	ExternalIdFieldName     string  `json:"externalIdFieldName"`
+	ID                      string  `json:"id"`
+	JobType                 string  `json:"jobType"`
+	LineEnding              string  `json:"lineEnding"`
+	RecordsFailed           uint    `json:"numberRecordsFailed"`
+	RecordsProcessed        uint    `json:"numberRecordsProcessed"`
+	Retries                 uint    `json:"retries"`
+	Object                  string  `json:"object"`
+	Operation               string  `json:"operation"`
+	State                   string  `json:"state"`
+	SystemModstamp          string  `json:"SystemModstamp"`
+	TotalProcessingTime     uint    `json:"totalProcessingTime"`
 }
 
 type JobConfig struct {
-	Object    string `json:"object"`
-	Operation string `json:"operation"`
+	Object      string `json:"object"`
+	Operation   string `json:"operation"`
 	ContentType string `json:"contentType"`
-	Delim string `json:"columnDelimiter"`
+	Delim       string `json:"columnDelimiter"`
 }
 
 type ServerError struct {
 	ErrorCode string `json:"errorCode"`
-	Message string `json:"message"`
+	Message   string `json:"message"`
 }
 
 func (s ServerError) Error() string {
 	return s.Message
-}
-
-// returns true if valid delim, and returns name. otherwise returns false
-func GetDelimName(delim string) (string, bool) {
-	name, ok := delimMap[delim]
-	return name, ok
 }
 
 type Job struct {
@@ -73,7 +72,7 @@ type Job struct {
 
 	session auth.Session
 	config  JobConfig
-	info JobInfo
+	info    JobInfo
 }
 
 func NewJob(config JobConfig, session auth.Session) *Job {
@@ -85,7 +84,8 @@ func NewJob(config JobConfig, session auth.Session) *Job {
 	}
 }
 
-func (j *Job) Create() {
+// Creates a job on the server with the specified config for the job
+func (j *Job) Create() error {
 	endpoint := j.session.InstanceURL + "/services/data/v" + latestVersion + "/jobs/ingest"
 
 	log.Println("attempting to hit endpoint: ", endpoint)
@@ -99,16 +99,21 @@ func (j *Job) Create() {
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
 
-
 	client := http.DefaultClient
 
 	response, err := client.Do(req)
 
 	if err != nil {
-		log.Fatalln("error in response", err)
+		log.Println("error in response", err)
+		return err
 	}
 
 	respBody, err := ioutil.ReadAll(response.Body)
+
+	if err != nil {
+		log.Println("error in reading response", err)
+		return err
+	}
 
 	var info JobInfo
 
@@ -117,27 +122,18 @@ func (j *Job) Create() {
 	log.Println("response", string(respBody))
 
 	if err != nil {
-		log.Println("err: ", err)
-		if err, ok := err.(*json.UnmarshalTypeError); ok {
-			var resp []ServerError
-
-			err := json.Unmarshal(respBody, &resp)
-
-			if err != nil {
-				log.Fatalln("some other horrible error has occurred", err)
-			}
-
-			log.Fatalln("message from server: ", resp[0].Message)
-		} else {
-			log.Fatalln("error in unmarshal", err)
-		}
+		log.Println("error in unmarshalling", err)
+		return err
 	}
 
 	j.info = info
 	log.Println("info from server", info)
+
+	return nil
 }
 
-func (j *Job) Upload(files ...string) {
+// Uploads files to the job created in Create()
+func (j *Job) Upload(files ...string) error {
 	endpoint := j.jobURL()
 
 	log.Println("attemping to hit endpoint: ", endpoint)
@@ -149,8 +145,8 @@ func (j *Job) Upload(files ...string) {
 		content, err := ioutil.ReadFile(path)
 
 		if err != nil {
-			// TODO handle
-			log.Fatalln("couldn't read file: ", path, err)
+			log.Println("couldn't read file: ", path, err)
+			return err
 		}
 
 		readFiles[i] = content
@@ -165,8 +161,8 @@ func (j *Job) Upload(files ...string) {
 		req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
 
 		if err != nil {
-			// TODO handle
-			log.Fatalln("couldn't create request: ", err)
+			log.Println("couldn't create request: ", err)
+			return err
 		}
 
 		client := http.DefaultClient
@@ -174,7 +170,8 @@ func (j *Job) Upload(files ...string) {
 		resp, err := client.Do(req)
 
 		if err != nil {
-			log.Fatalln("response err", err)
+			log.Println("response err", err)
+			return err
 		}
 
 		if resp.StatusCode != 201 {
@@ -182,26 +179,35 @@ func (j *Job) Upload(files ...string) {
 
 			if err != nil {
 				log.Println("resp body err", err)
+				return err
 			}
 
+			// TODO return custom error
 			log.Fatalln("server responded with ", resp.StatusCode, "with file: ", files[i], string(respBody))
 		}
 	}
+
+	return nil
 }
 
+// Writes progress to the Status channel, and Done when finished
 func (j *Job) Watch() {
-
+	panic("not implemented")
 }
 
-func (j *Job) Close() {
-
+// Named "CloseJob" to avoid confusion that it implements any io type. Closes a job on the server.
+func (j *Job) CloseJob() error {
+	panic("not implemented")
 }
 
-func (j *Job) Abort() {
-
+// Aborts a job on the server
+func (j *Job) Abort() error {
+	panic("not implemented")
 }
 
-func (j *Job) Delete() {
+// Deletes a job on the server
+func (j *Job) Delete() error {
+	panic("not implemented")
 }
 
 // TODO handle getting successful, failed, and unprocessed jobs

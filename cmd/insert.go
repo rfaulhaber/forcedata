@@ -2,18 +2,17 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/rfaulhaber/force-data/auth"
+	"github.com/rfaulhaber/force-data/job"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/rfaulhaber/force-data/job"
-	"github.com/rfaulhaber/force-data/auth"
 	"log"
 )
 
 var (
-	objFlag string
+	objFlag   string
 	delimFlag string
 )
-
 
 // insertCmd represents the insert command
 var insertCmd = &cobra.Command{
@@ -62,9 +61,9 @@ func runInsert(cmd *cobra.Command, args []string) {
 	delimName, _ := job.GetDelimName(delimFlag)
 
 	config := job.JobConfig{
-		Object: objFlag,
+		Object:    objFlag,
 		Operation: "insert",
-		Delim: delimName,
+		Delim:     delimName,
 		// TODO dynamically populate
 		ContentType: "CSV",
 	}
