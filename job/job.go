@@ -11,19 +11,20 @@ import (
 
 const latestVersion = "43.0"
 
-type Job struct {
-	Status chan JobInfo
-	Done   chan bool
 
-	session auth.Session
-	config  JobConfig
-	info JobInfo
+var delimMap = map[string]string{
+	"`": "BACKQUOTE",
+	"^": "CARET",
+	",": "COMMA",
+	"|": "PIPE",
+	";": "SEMICOLON",
+	"\\t": "TAB",
 }
 
 type JobInfo struct {
 	ApexProcessingTime      uint   `json:"apexProcessingTime"`
 	APIActiveProcessingTime int    `json:"apiActiveProcessingTime"`
-	APIVersion              string `json:"apiVersion"`
+	APIVersion              float32 `json:"apiVersion"`
 	ColumnDelimiter         string `json:"columnDelimiter"`
 	ConcurrencyMode         string `json:"concurrencyMode"`
 	ContentType             string `json:"contentType"`
@@ -47,7 +48,32 @@ type JobInfo struct {
 type JobConfig struct {
 	Object    string `json:"object"`
 	Operation string `json:"operation"`
+	ContentType string `json:"contentType"`
 	Delim string `json:"columnDelimiter"`
+}
+
+type ServerError struct {
+	ErrorCode string `json:"errorCode"`
+	Message string `json:"message"`
+}
+
+func (s ServerError) Error() string {
+	return s.Message
+}
+
+// returns true if valid delim, and returns name. otherwise returns false
+func GetDelimName(delim string) (string, bool) {
+	name, ok := delimMap[delim]
+	return name, ok
+}
+
+type Job struct {
+	Status chan JobInfo
+	Done   chan bool
+
+	session auth.Session
+	config  JobConfig
+	info JobInfo
 }
 
 func NewJob(config JobConfig, session auth.Session) *Job {
@@ -66,10 +92,13 @@ func (j *Job) Create() {
 
 	reqBody, _ := json.Marshal(j.config)
 
+	log.Println("job", string(reqBody))
+
 	req, _ := http.NewRequest("POST", endpoint, bytes.NewReader(reqBody))
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
+
 
 	client := http.DefaultClient
 
@@ -88,7 +117,20 @@ func (j *Job) Create() {
 	log.Println("response", string(respBody))
 
 	if err != nil {
-		log.Fatalln("error in unmarshal", err)
+		log.Println("err: ", err)
+		if err, ok := err.(*json.UnmarshalTypeError); ok {
+			var resp []ServerError
+
+			err := json.Unmarshal(respBody, &resp)
+
+			if err != nil {
+				log.Fatalln("some other horrible error has occurred", err)
+			}
+
+			log.Fatalln("message from server: ", resp[0].Message)
+		} else {
+			log.Fatalln("error in unmarshal", err)
+		}
 	}
 
 	j.info = info
@@ -96,12 +138,14 @@ func (j *Job) Create() {
 }
 
 func (j *Job) Upload(files ...string) {
-	// TODO make async?
 	endpoint := j.jobURL()
+
+	log.Println("attemping to hit endpoint: ", endpoint)
 
 	readFiles := make([][]byte, len(files))
 
-	for _, path := range files {
+	for i, path := range files {
+		log.Println("reading file: ", path)
 		content, err := ioutil.ReadFile(path)
 
 		if err != nil {
@@ -109,12 +153,16 @@ func (j *Job) Upload(files ...string) {
 			log.Fatalln("couldn't read file: ", path, err)
 		}
 
-		readFiles = append(readFiles, content)
+		readFiles[i] = content
 	}
 
 	for i := range readFiles {
 		content := readFiles[i]
-		req, err := http.NewRequest("POST", endpoint, bytes.NewReader(content))
+		log.Println("attempting to upload file: ", i)
+		req, err := http.NewRequest("PUT", endpoint, bytes.NewReader(content))
+		req.Header.Add("Content-Type", "text/csv")
+		req.Header.Add("Accept", "application/json")
+		req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
 
 		if err != nil {
 			// TODO handle
@@ -130,7 +178,13 @@ func (j *Job) Upload(files ...string) {
 		}
 
 		if resp.StatusCode != 201 {
-			log.Fatalln("server responded with ", resp.StatusCode, "with file: ")
+			respBody, err := ioutil.ReadAll(resp.Body)
+
+			if err != nil {
+				log.Println("resp body err", err)
+			}
+
+			log.Fatalln("server responded with ", resp.StatusCode, "with file: ", files[i], string(respBody))
 		}
 	}
 }
@@ -153,5 +207,5 @@ func (j *Job) Delete() {
 // TODO handle getting successful, failed, and unprocessed jobs
 
 func (j *Job) jobURL() string {
-	return j.session.InstanceURL + j.info.ContentURL
+	return j.session.InstanceURL + "/" + j.info.ContentURL
 }

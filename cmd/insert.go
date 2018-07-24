@@ -48,12 +48,9 @@ func init() {
 
 func runInsert(cmd *cobra.Command, args []string) {
 	fmt.Println("attempting to insert: ", args)
-	fmt.Println("server", viper.GetString("instance_url"))
 
 	session := auth.Session{}
 	err := viper.Unmarshal(&session)
-
-	log.Println("session", session)
 
 	if err != nil {
 		log.Fatalln("viper could not unmarshal", err)
@@ -61,13 +58,22 @@ func runInsert(cmd *cobra.Command, args []string) {
 
 	log.Println("session url", session.InstanceURL)
 
+	// TODO do better!
+	delimName, _ := job.GetDelimName(delimFlag)
+
 	config := job.JobConfig{
 		Object: objFlag,
 		Operation: "insert",
-		Delim: delimFlag,
+		Delim: delimName,
+		// TODO dynamically populate
+		ContentType: "CSV",
 	}
 
 	j := job.NewJob(config, session)
 
+	log.Println("creating job...")
 	j.Create()
+
+	log.Println("uploading files...")
+	j.Upload(args...)
 }
