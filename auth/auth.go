@@ -8,6 +8,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"errors"
 )
 
 // TODO write custom errors for Salesforce errors!
@@ -17,6 +21,7 @@ const (
 	authEndpoint    = "/services/oauth2/token"
 )
 
+// Credential represents a Salesforce user credential.
 type Credential struct {
 	Username     string `json:"username"`
 	Password     string `json:"password"`
@@ -100,7 +105,20 @@ func SendAuthRequest(c Credential) (Session, error) {
 		return Session{}, err
 	}
 
-	return decodeJSON(respBody)
+	session, err := decodeJSON(respBody)
+
+	if err != nil {
+		return Session{}, err
+	}
+
+	valid := validSignature(session.ID + session.IssuedAt, session.Signature, c.ClientSecret)
+
+	if !valid {
+		// TODO create custom error
+		return Session{}, errors.New("signature does not match expected value")
+	}
+
+	return session, err
 }
 
 func cleanInput(username, password, url string) (string, string, string) {
@@ -173,4 +191,12 @@ func decodeJSON(data []byte) (Session, error) {
 	err := json.Unmarshal(data, &resp)
 
 	return resp, err
+}
+
+func validSignature(message string, signature string, key string) bool {
+	mac := hmac.New(sha256.New, []byte(key))
+	mac.Write([]byte(message))
+	expected := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+
+	return hmac.Equal([]byte(expected), []byte(signature))
 }
