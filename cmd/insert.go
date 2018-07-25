@@ -25,7 +25,7 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run:  runInsert,
-	Args: cobra.MinimumNArgs(1),
+	Args: cobra.MaximumNArgs(1),
 }
 
 func init() {
@@ -48,6 +48,7 @@ func init() {
 func runInsert(cmd *cobra.Command, args []string) {
 	fmt.Println("attempting to insert: ", args)
 
+	// TODO validate config
 	session := auth.Session{}
 	err := viper.Unmarshal(&session)
 
@@ -71,8 +72,19 @@ func runInsert(cmd *cobra.Command, args []string) {
 	j := job.NewJob(config, session)
 
 	log.Println("creating job...")
-	j.Create()
+	err = j.Create()
+
+	// TODO create job for each arg
+
+	if err != nil {
+		// TODO handle error, print message
+		log.Fatalln("create error", err)
+	}
 
 	log.Println("uploading files...")
-	j.Upload(args...)
+	err = j.Upload(args[0])
+
+	if err != nil {
+		log.Fatalln("upload error", err)
+	}
 }

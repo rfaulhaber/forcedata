@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"io"
 )
 
 const latestVersion = "43.0"
@@ -108,21 +109,11 @@ func (j *Job) Create() error {
 		return err
 	}
 
-	respBody, err := ioutil.ReadAll(response.Body)
-
-	if err != nil {
-		log.Println("error in reading response", err)
-		return err
-	}
-
 	var info JobInfo
 
-	err = json.Unmarshal(respBody, &info)
-
-	log.Println("response", string(respBody))
+	err = readJSONBody(response.Body, &info)
 
 	if err != nil {
-		log.Println("error in unmarshalling", err)
 		return err
 	}
 
@@ -133,61 +124,52 @@ func (j *Job) Create() error {
 }
 
 // Uploads files to the job created in Create()
-func (j *Job) Upload(files ...string) error {
+func (j *Job) Upload(file string) error {
 	endpoint := j.jobURL()
 
 	log.Println("attemping to hit endpoint: ", endpoint)
 
-	readFiles := make([][]byte, len(files))
+	log.Println("reading file: ", file)
+	content, err := ioutil.ReadFile(file)
 
-	for i, path := range files {
-		log.Println("reading file: ", path)
-		content, err := ioutil.ReadFile(path)
-
-		if err != nil {
-			log.Println("couldn't read file: ", path, err)
-			return err
-		}
-
-		readFiles[i] = content
+	if err != nil {
+		log.Println("couldn't read file: ", file, err)
+		return err
 	}
 
-	for i := range readFiles {
-		content := readFiles[i]
-		log.Println("attempting to upload file: ", i)
-		req, err := http.NewRequest("PUT", endpoint, bytes.NewReader(content))
-		req.Header.Add("Content-Type", "text/csv")
-		req.Header.Add("Accept", "application/json")
-		req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
+	log.Println("attempting to upload file: ", file)
+	req, err := http.NewRequest("PUT", endpoint, bytes.NewReader(content))
+	req.Header.Add("Content-Type", "text/csv")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
 
-		if err != nil {
-			log.Println("couldn't create request: ", err)
-			return err
-		}
-
-		client := http.DefaultClient
-
-		resp, err := client.Do(req)
-
-		if err != nil {
-			log.Println("response err", err)
-			return err
-		}
-
-		if resp.StatusCode != 201 {
-			respBody, err := ioutil.ReadAll(resp.Body)
-
-			if err != nil {
-				log.Println("resp body err", err)
-				return err
-			}
-
-			// TODO return custom error
-			log.Fatalln("server responded with ", resp.StatusCode, "with file: ", files[i], string(respBody))
-		}
+	if err != nil {
+		log.Println("couldn't create request: ", err)
+		return err
 	}
 
-	return nil
+	client := http.DefaultClient
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		log.Println("response err", err)
+		return err
+	}
+
+	// TODO return custom error
+	if resp.StatusCode != 201 {
+		respBody, err := ioutil.ReadAll(resp.Body)
+
+		if err != nil {
+			log.Println("resp body err", err)
+			return err
+		}
+
+		log.Fatalln("server responded with ", resp.StatusCode, "with file: ", file, string(respBody))
+	}
+
+	return j.uploadComplete()
 }
 
 // Writes progress to the Status channel, and Done when finished
@@ -195,7 +177,8 @@ func (j *Job) Watch() {
 	panic("not implemented")
 }
 
-// Named "CloseJob" to avoid confusion that it implements any io type. Closes a job on the server.
+// Closes a job on the server, allowing Salesforce to process the records.
+// Named "CloseJob" to avoid confusion that it implements io.Writer.
 func (j *Job) CloseJob() error {
 	panic("not implemented")
 }
@@ -211,7 +194,75 @@ func (j *Job) Delete() error {
 }
 
 // TODO handle getting successful, failed, and unprocessed jobs
+// TODO generalize callouts, create cleaner mechanism for it
+
+
+func (j *Job) uploadComplete() error {
+	endpoint := j.session.InstanceURL + "/services/data/v" + latestVersion + "/jobs/ingest/" + j.info.ID
+
+	log.Println("attemping to hit endpoint: ", endpoint)
+
+	content, err := json.Marshal(struct {
+		State string `json:"state"`
+	}{
+		"UploadComplete",
+	})
+
+	log.Println("raw request content", string(content))
+
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("PATCH", endpoint, bytes.NewReader(content))
+
+	if err != nil {
+		return err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
+
+	client := http.DefaultClient
+
+	respBody, err := client.Do(req)
+
+	if err != nil {
+		return err
+	}
+
+	var info JobInfo
+
+	err = readJSONBody(respBody.Body, &info)
+
+	if err != nil {
+		return err
+	}
+
+	log.Println("raw info", info)
+
+	return nil
+}
 
 func (j *Job) jobURL() string {
 	return j.session.InstanceURL + "/" + j.info.ContentURL
+}
+
+func readJSONBody(b io.ReadCloser, v interface{}) error {
+	body, err := ioutil.ReadAll(b)
+
+	if err != nil {
+		return err
+	}
+
+	log.Println("raw body", string(body))
+
+	err = json.Unmarshal(body, &v)
+
+	if err != nil {
+		log.Println("info err", err)
+	}
+
+	return nil
 }
