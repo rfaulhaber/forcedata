@@ -3,7 +3,7 @@ package job
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/rfaulhaber/force-data/auth"
+	"github.com/rfaulhaber/forcedata/auth"
 	"io/ioutil"
 	"log"
 	"net/http"

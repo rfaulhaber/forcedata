@@ -1,6 +1,6 @@
 package main
 
-import "github.com/rfaulhaber/force-data/cmd"
+import "github.com/rfaulhaber/forcedata/cmd"
 
 func main() {
 	cmd.Execute()

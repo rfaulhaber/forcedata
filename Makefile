@@ -1,5 +1,5 @@
 GOBUILD = go build -v 
-SOURCE = github.com/rfaulhaber/force-data
+SOURCE = github.com/rfaulhaber/forcedata
 ARCH = arch=amd64
 OUTDIR = ./out
 

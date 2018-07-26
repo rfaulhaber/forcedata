@@ -3,7 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/rfaulhaber/force-data/auth"
+	"github.com/rfaulhaber/forcedata/auth"
 	"github.com/spf13/cobra"
 	"log"
 	"os"

@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "0.1"
+const version = "0.1-rc1"
 
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
@@ -20,5 +20,5 @@ func init() {
 }
 
 func printVersion(cmd *cobra.Command, args []string) {
-	fmt.Println("data v" + version)
+	fmt.Println("ForceData v" + version)
 }

@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/rfaulhaber/force-data/auth"
-	"github.com/rfaulhaber/force-data/job"
+	"github.com/rfaulhaber/forcedata/auth"
+	"github.com/rfaulhaber/forcedata/job"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"log"
