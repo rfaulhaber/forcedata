@@ -7,12 +7,16 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"log"
-	)
+	"time"
+	"io"
+	"os"
+)
 
 var (
-	objFlag   string
-	delimFlag string
-	watchFlag bool
+	objFlag       string
+	delimFlag     string
+	watchFlag     bool
+	watchTimeFlag time.Duration
 )
 
 // insertCmd represents the insert command
@@ -39,6 +43,7 @@ func init() {
 	// insertCmd.PersistentFlags().String("foo", "", "A help for foo")
 	insertCmd.Flags().StringVar(&delimFlag, "delim", ",", "Delimiter used in all specified fiels (defaults to \",\")")
 	insertCmd.Flags().BoolVarP(&watchFlag, "watch", "w", false, "Continuously checks server for job progress.")
+	insertCmd.Flags().DurationVarP(&watchTimeFlag, "time", "t", job.DefaultWatchTime, "Requires --watch to be set. Frequency with which the job will check status on server. Defaults to 5s.")
 	insertCmd.Flags().StringVar(&objFlag, "object", "", "Object being inserted.")
 	insertCmd.MarkFlagRequired("object")
 
@@ -55,7 +60,7 @@ func runInsert(cmd *cobra.Command, args []string) {
 	err := viper.Unmarshal(&session)
 
 	if err != nil {
-		log.Fatalln("viper could not unmarshal", err)
+		log.Fatalln("viper could not unmarshal config", err)
 	}
 
 	log.Println("session url", session.InstanceURL)
@@ -64,11 +69,10 @@ func runInsert(cmd *cobra.Command, args []string) {
 	delimName, _ := job.GetDelimName(delimFlag)
 
 	config := job.JobConfig{
-		Object:    objFlag,
-		Operation: "insert",
-		Delim:     delimName,
-		// TODO dynamically populate
-		ContentType: "CSV",
+		Object:      objFlag,
+		Operation:   "insert",
+		Delim:       delimName,
+		ContentType: "CSV", // TODO determine based on MIME type? ending?
 	}
 
 	j := job.NewJob(config, session)
@@ -91,19 +95,19 @@ func runInsert(cmd *cobra.Command, args []string) {
 	}
 
 	if watchFlag {
-		go j.Watch()
-		watchJob(j)
+		go j.Watch(watchTimeFlag)
+
+		for {
+			if status, ok := <- j.Status; ok {
+				PrintStatus(status, os.Stdout)
+			} else {
+				return
+			}
+		}
 	}
 }
 
-func watchJob(j *job.Job) {
-	for {
-		select {
-		case status := <- j.Status:
-			log.Println("status", status)
-		case done := <- j.Done:
-			log.Println("done", done)
-			return
-		}
-	}
+func PrintStatus(status job.JobInfo, out io.Writer) {
+	io.WriteString(out, "")
+	fmt.Fprintf(out, "Records processed: %d\tRecords failed: %d", status.RecordsProcessed, status.RecordsFailed)
 }

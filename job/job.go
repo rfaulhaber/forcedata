@@ -14,7 +14,10 @@ import (
 
 // TODO enforce job state?
 
-const latestVersion = "43.0"
+const (
+	DefaultWatchTime = 5 * time.Second
+	latestVersion = "43.0"
+)
 
 var delimMap = map[string]string{
 	"`":   "BACKQUOTE",
@@ -55,6 +58,10 @@ type JobInfo struct {
 	TotalProcessingTime     uint    `json:"totalProcessingTime"`
 }
 
+type JobError struct {
+	Message string `json:"message"`
+}
+
 type JobConfig struct {
 	Object      string `json:"object"`
 	Operation   string `json:"operation"`
@@ -73,7 +80,7 @@ func (s ServerError) Error() string {
 
 type Job struct {
 	Status chan JobInfo
-	Done   chan bool
+	Error chan JobError
 
 	session auth.Session
 	config  JobConfig
@@ -83,7 +90,8 @@ type Job struct {
 func NewJob(config JobConfig, session auth.Session) *Job {
 	return &Job{
 		make(chan JobInfo),
-		make(chan bool), session,
+		make(chan JobError),
+		session,
 		config,
 		JobInfo{},
 	}
@@ -177,20 +185,18 @@ func (j *Job) Upload(file string) error {
 }
 
 // Writes progress to the Status channel, and Done when job finishes.
-func (j *Job) Watch() {
+func (j *Job) Watch(d time.Duration) {
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(d)
 		info, err := j.GetInfo()
 
+		// TODO do something more constructive here
 		if err != nil {
 			return
 		}
 
-		if info.State == "JobComplete" {
-			j.Done <- true
-			return
-		} else if info.State == "Failed" {
-			j.Done <- false
+		if info.State == "JobComplete" || info.State == "Failed" {
+			close(j.Status)
 			return
 		}
 
