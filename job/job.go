@@ -8,7 +8,11 @@ import (
 	"log"
 	"net/http"
 	"io"
+	"errors"
+	"time"
 )
+
+// TODO enforce job state?
 
 const latestVersion = "43.0"
 
@@ -123,7 +127,7 @@ func (j *Job) Create() error {
 	return nil
 }
 
-// Uploads files to the job created in Create()
+// Uploads files to the job created in Create(). Sets the job to "Closed" when finished.
 func (j *Job) Upload(file string) error {
 	endpoint := j.jobURL()
 
@@ -172,25 +176,102 @@ func (j *Job) Upload(file string) error {
 	return j.uploadComplete()
 }
 
-// Writes progress to the Status channel, and Done when finished
+// Writes progress to the Status channel, and Done when job finishes.
 func (j *Job) Watch() {
-	panic("not implemented")
+	for {
+		time.Sleep(5 * time.Second)
+		info, err := j.GetInfo()
+
+		if err != nil {
+			return
+		}
+
+		if info.State == "JobComplete" {
+			j.Done <- true
+			return
+		} else if info.State == "Failed" {
+			j.Done <- false
+			return
+		}
+
+		j.Status <- info
+	}
 }
 
-// Closes a job on the server, allowing Salesforce to process the records.
-// Named "CloseJob" to avoid confusion that it implements io.Writer.
-func (j *Job) CloseJob() error {
-	panic("not implemented")
+func (j *Job) GetInfo() (JobInfo, error) {
+	endpoint := j.session.InstanceURL + "/services/data/v" + latestVersion + "/jobs/ingest/" + j.info.ID
+
+	log.Println("attemping to hit endpoint: ", endpoint)
+
+	req, err := http.NewRequest("GET", endpoint, nil)
+
+	if err != nil {
+		return JobInfo{}, err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
+
+	client := http.DefaultClient
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return JobInfo{}, err
+	}
+
+	info, err := getJobInfo(resp.Body)
+
+	if err != nil {
+		return JobInfo{}, err
+	}
+
+	log.Println("raw info", info)
+
+	return info, err
+}
+
+// Sets job to "UploadComplete" state on the server.
+func (j *Job) Complete() error {
+	return j.uploadComplete()
 }
 
 // Aborts a job on the server
 func (j *Job) Abort() error {
-	panic("not implemented")
+	return j.setState("Aborted")
 }
 
 // Deletes a job on the server
 func (j *Job) Delete() error {
-	panic("not implemented")
+	endpoint := j.session.InstanceURL + "/services/data/v" + latestVersion + "/jobs/ingest/" + j.info.ID
+
+	log.Println("attemping to hit endpoint: ", endpoint)
+
+	req, err := http.NewRequest("DELETE", endpoint, nil)
+
+	if err != nil {
+		return err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
+
+	client := http.DefaultClient
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 204 {
+		// TODO parse error?
+		return errors.New("something went wrong with deleting job")
+	}
+
+	return nil
 }
 
 // TODO handle getting successful, failed, and unprocessed jobs
@@ -198,6 +279,10 @@ func (j *Job) Delete() error {
 
 
 func (j *Job) uploadComplete() error {
+	return j.setState("UploadComplete")
+}
+
+func (j *Job) setState(state string) error {
 	endpoint := j.session.InstanceURL + "/services/data/v" + latestVersion + "/jobs/ingest/" + j.info.ID
 
 	log.Println("attemping to hit endpoint: ", endpoint)
@@ -205,7 +290,7 @@ func (j *Job) uploadComplete() error {
 	content, err := json.Marshal(struct {
 		State string `json:"state"`
 	}{
-		"UploadComplete",
+		state,
 	})
 
 	log.Println("raw request content", string(content))
@@ -226,15 +311,13 @@ func (j *Job) uploadComplete() error {
 
 	client := http.DefaultClient
 
-	respBody, err := client.Do(req)
+	resp, err := client.Do(req)
 
 	if err != nil {
 		return err
 	}
 
-	var info JobInfo
-
-	err = readJSONBody(respBody.Body, &info)
+	info, err := getJobInfo(resp.Body)
 
 	if err != nil {
 		return err
@@ -247,6 +330,18 @@ func (j *Job) uploadComplete() error {
 
 func (j *Job) jobURL() string {
 	return j.session.InstanceURL + "/" + j.info.ContentURL
+}
+
+func getJobInfo(b io.ReadCloser) (JobInfo, error) {
+	var info JobInfo
+
+	err := readJSONBody(b, &info)
+
+	if err != nil {
+		return JobInfo{}, err
+	}
+
+	return info, nil
 }
 
 func readJSONBody(b io.ReadCloser, v interface{}) error {

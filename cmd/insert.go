@@ -7,11 +7,12 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"log"
-)
+	)
 
 var (
 	objFlag   string
 	delimFlag string
+	watchFlag bool
 )
 
 // insertCmd represents the insert command
@@ -37,6 +38,7 @@ func init() {
 	// and all subcommands, e.g.:
 	// insertCmd.PersistentFlags().String("foo", "", "A help for foo")
 	insertCmd.Flags().StringVar(&delimFlag, "delim", ",", "Delimiter used in all specified fiels (defaults to \",\")")
+	insertCmd.Flags().BoolVarP(&watchFlag, "watch", "w", false, "Continuously checks server for job progress.")
 	insertCmd.Flags().StringVar(&objFlag, "object", "", "Object being inserted.")
 	insertCmd.MarkFlagRequired("object")
 
@@ -86,5 +88,22 @@ func runInsert(cmd *cobra.Command, args []string) {
 
 	if err != nil {
 		log.Fatalln("upload error", err)
+	}
+
+	if watchFlag {
+		go j.Watch()
+		watchJob(j)
+	}
+}
+
+func watchJob(j *job.Job) {
+	for {
+		select {
+		case status := <- j.Status:
+			log.Println("status", status)
+		case done := <- j.Done:
+			log.Println("done", done)
+			return
+		}
 	}
 }
