@@ -10,6 +10,8 @@ import (
 	"time"
 	"io"
 	"os"
+	"github.com/pkg/errors"
+	"io/ioutil"
 )
 
 var (
@@ -30,7 +32,15 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run:  runInsert,
-	Args: cobra.MaximumNArgs(1),
+	Args: func(cmd *cobra.Command, args []string) error {
+		info, _ := os.Stdin.Stat()
+
+		if info.Size() > 0  || len(args) == 1 {
+			return nil
+		} else {
+			return errors.New("must either read in CSV content from stdin or specify one file to upload")
+		}
+	},
 }
 
 func init() {
@@ -53,17 +63,17 @@ func init() {
 }
 
 func runInsert(cmd *cobra.Command, args []string) {
-	fmt.Println("attempting to insert: ", args)
-
 	// TODO validate config
 	session := auth.Session{}
 	err := viper.Unmarshal(&session)
 
+	if !isValidSession(session) {
+		log.Fatalln("Session info is not valid")
+	}
+
 	if err != nil {
 		log.Fatalln("viper could not unmarshal config", err)
 	}
-
-	log.Println("session url", session.InstanceURL)
 
 	// TODO do better!
 	delimName, _ := job.GetDelimName(delimFlag)
@@ -83,12 +93,23 @@ func runInsert(cmd *cobra.Command, args []string) {
 	// TODO create job for each arg
 
 	if err != nil {
-		// TODO handle error, print message
-		log.Fatalln("create error", err)
+		log.Fatalln("error creating job:", err)
 	}
 
 	log.Println("uploading files...")
-	err = j.Upload(args[0])
+	var content []byte
+
+	if isPipe() {
+		content, err = ReadSource(os.Stdin)
+	} else {
+		content, err = ioutil.ReadFile(args[0])
+	}
+
+	if err != nil {
+		log.Fatalln("could not read source", err)
+	}
+
+	err = j.Upload(content)
 
 	if err != nil {
 		log.Fatalln("upload error", err)
@@ -98,9 +119,15 @@ func runInsert(cmd *cobra.Command, args []string) {
 		go j.Watch(watchTimeFlag)
 
 		for {
-			if status, ok := <- j.Status; ok {
-				PrintStatus(status, os.Stdout)
-			} else {
+			select {
+			case status, ok := <- j.Status:
+				if ok {
+					PrintStatus(status, os.Stdout)
+				} else {
+					return
+				}
+			case err := <- j.Error:
+				log.Fatalln("watch error: ", err)
 				return
 			}
 		}
@@ -110,4 +137,24 @@ func runInsert(cmd *cobra.Command, args []string) {
 func PrintStatus(status job.JobInfo, out io.Writer) {
 	io.WriteString(out, "")
 	fmt.Fprintf(out, "Records processed: %d\tRecords failed: %d", status.RecordsProcessed, status.RecordsFailed)
+}
+
+// reads content from source
+func ReadSource(source io.ReadCloser) ([]byte, error) {
+	content, err := ioutil.ReadAll(source)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "attempting to read file source")
+	}
+
+	return content, nil
+}
+
+func isPipe() bool {
+	stat, err := os.Stdin.Stat()
+	return err == nil && stat.Size() > 0
+}
+
+func isValidSession(session auth.Session) bool {
+	return session.AccessToken != "" && session.InstanceURL != "" && session.ID != ""
 }
