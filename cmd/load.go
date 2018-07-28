@@ -1,14 +1,14 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
-	"os"
-	"github.com/rfaulhaber/forcedata/auth"
-	"github.com/spf13/viper"
 	"github.com/pkg/errors"
-	"strings"
+	"github.com/rfaulhaber/forcedata/auth"
 	"github.com/rfaulhaber/forcedata/job"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"log"
+	"os"
+	"strings"
 )
 
 var flags CtxFlags
@@ -24,8 +24,8 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	PreRunE: preRunLoad,
-	Run: runLoad,
-	Args: validateCmdArgs,
+	Run:     runLoad,
+	Args:    validateCmdArgs,
 }
 
 func init() {
@@ -83,7 +83,7 @@ func validateCmdArgs(cmd *cobra.Command, args []string) error {
 }
 
 func validateFlags(flags CtxFlags) (string, error) {
-	opMap := map[string]bool {
+	opMap := map[string]bool{
 		"insert": flags.InsertFlag,
 		"update": flags.UpdateFlag,
 		"upsert": flags.UpsertFlag,
@@ -96,7 +96,7 @@ func validateFlags(flags CtxFlags) (string, error) {
 
 	var op string
 
-	for k, v := range opMap{
+	for k, v := range opMap {
 		if v {
 			count++
 			op = k

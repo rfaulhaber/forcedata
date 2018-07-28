@@ -13,9 +13,9 @@ import (
 )
 
 type CtxFlags struct {
-	ObjFlag       string
-	DelimFlag     string
-	WatchFlag     time.Duration
+	ObjFlag    string
+	DelimFlag  string
+	WatchFlag  time.Duration
 	InsertFlag bool
 	UpdateFlag bool
 	UpsertFlag bool
@@ -25,9 +25,9 @@ type CtxFlags struct {
 // context specifies the context in which the program runs
 type Context struct {
 	// "insert", "update", "upsert", or "delete"
-	command string
-	flags   CtxFlags
-	job     *job.Job
+	command  string
+	flags    CtxFlags
+	job      *job.Job
 	setWatch bool
 }
 
