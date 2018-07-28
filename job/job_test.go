@@ -1,24 +1,24 @@
 package job
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"github.com/rfaulhaber/forcedata/auth"
+	"github.com/stretchr/testify/assert"
+	"testing"
 	"time"
-					)
+)
 
 const testInstanceURL = "http://localhost:3030"
 
 func TestGetDelimName(t *testing.T) {
 	testCases := []struct {
-		input string
+		input    string
 		expected string
 	}{
-		{"`",   "BACKQUOTE"},
-		{"^",   "CARET"},
-		{",",   "COMMA"},
-		{"|",   "PIPE"},
-		{";",   "SEMICOLON"},
+		{"`", "BACKQUOTE"},
+		{"^", "CARET"},
+		{",", "COMMA"},
+		{"|", "PIPE"},
+		{";", "SEMICOLON"},
 		{"\\t", "TAB"},
 	}
 
@@ -33,10 +33,10 @@ func TestNewJob(t *testing.T) {
 	testSession := makeSession()
 
 	testConfig := JobConfig{
-		Object: "Contact",
-		Operation: "insert",
+		Object:      "Contact",
+		Operation:   "insert",
 		ContentType: "CSV",
-		Delim: "COMMA",
+		Delim:       "COMMA",
 	}
 
 	expected := &Job{
@@ -55,7 +55,6 @@ func TestNewJob(t *testing.T) {
 
 func TestJob_Create(t *testing.T) {
 }
-
 
 func TestJob_Upload(t *testing.T) {
 
@@ -97,8 +96,8 @@ func makeSession() auth.Session {
 	return auth.Session{
 		AccessToken: "token123",
 		InstanceURL: testInstanceURL,
-		ID: "ID123",
-		IssuedAt: time.Now().String(),
-		Signature: "123SIG321",
+		ID:          "ID123",
+		IssuedAt:    time.Now().String(),
+		Signature:   "123SIG321",
 	}
 }

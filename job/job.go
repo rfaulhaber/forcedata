@@ -3,20 +3,20 @@ package job
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/pkg/errors"
 	"github.com/rfaulhaber/forcedata/auth"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"io"
 	"time"
-	"github.com/pkg/errors"
 )
 
 // TODO enforce job state?
 
 const (
 	DefaultWatchTime = 5 * time.Second
-	latestVersion = "43.0"
+	latestVersion    = "43.0"
 )
 
 var delimMap = map[string]string{
@@ -59,9 +59,9 @@ type JobInfo struct {
 }
 
 type JobError struct {
-	Message string `json:"message"`
-	ErrorCode string `json:"errorCode"`
-	Fields []string `json:"fields"`
+	Message   string   `json:"message"`
+	ErrorCode string   `json:"errorCode"`
+	Fields    []string `json:"fields"`
 }
 
 func (e JobError) Error() string {
@@ -77,7 +77,7 @@ type JobConfig struct {
 
 type Job struct {
 	Status chan JobInfo
-	Error chan error
+	Error  chan error
 
 	session auth.Session
 	config  JobConfig
@@ -297,7 +297,6 @@ func (j *Job) SetJobInfo(info JobInfo) {
 }
 
 // TODO generalize callouts, create cleaner mechanism for it
-
 
 func (j *Job) uploadComplete() error {
 	return j.setState("UploadComplete")

@@ -11,13 +11,13 @@ import (
 )
 
 var (
-	cfgFile string
+	cfgFile   string
 	quietFlag bool
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "data",
+	Use:   "data [OPTIONS] COMMAND",
 	Short: "Unofficial CLI tool for doing data loads",
 	// TODO write this!
 	Long: `A longer description that spans multiple lines and likely contains
@@ -46,7 +46,7 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "Config file (default is $HOME/.config/forcedata/config.json)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "Config file (default is ./config.json)")
 	rootCmd.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "Suppresses all output to stdout")
 
 	// TODO add -v or --log flag?

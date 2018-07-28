@@ -109,7 +109,7 @@ func SendAuthRequest(c Credential) (Session, error) {
 
 // Returns true if signature is valid
 func ValidateSession(session Session, secret string) bool {
-	return validSignature(session.ID + session.IssuedAt, session.Signature, secret)
+	return validSignature(session.ID+session.IssuedAt, session.Signature, secret)
 }
 
 func cleanInput(username, password, url string) (string, string, string) {
