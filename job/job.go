@@ -146,8 +146,6 @@ func (j *Job) Create() error {
 func (j *Job) Upload(content []byte) error {
 	endpoint := j.batchURL()
 
-	// TODO should I validate content?
-
 	log.Println("attempting to hit endpoint: ", endpoint)
 
 	req, err := http.NewRequest("PUT", endpoint, bytes.NewReader(content))

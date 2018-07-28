@@ -90,8 +90,6 @@ func validateFlags(flags CtxFlags) (string, error) {
 		"delete": flags.DeleteFlag,
 	}
 
-	log.Println("opmap", opMap)
-
 	count := 0
 
 	var op string
