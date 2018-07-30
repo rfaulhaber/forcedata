@@ -7,7 +7,6 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"io"
 	"io/ioutil"
 	"log"
 )
@@ -17,9 +16,8 @@ var (
 	quietFlag   bool
 	verboseFlag bool
 
-	verbose   *log.Logger
-	errorLog  *log.Logger
-	stdWriter = newLogger(os.Stdout, false)
+	verbose = log.New(ioutil.Discard, "", 0)
+	stdWriter = log.New(os.Stdout, "", 0)
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -34,19 +32,15 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		if verboseFlag && !quietFlag {
-			verbose = newLogger(os.Stdout, true)
-		} else {
-			verbose = newLogger(ioutil.Discard, false)
+		if verboseFlag {
+			verbose = log.New(os.Stderr, "", 0)
 		}
 
 		if quietFlag {
-			stdWriter = newLogger(ioutil.Discard, false)
-		} else {
-			stdWriter = newLogger(os.Stdout, false)
+			stdWriter = log.New(ioutil.Discard, "", 0)
 		}
 
-		errorLog = newLogger(os.Stderr, false)
+		log.SetFlags(0)
 	},
 }
 
@@ -90,21 +84,5 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		verbose.Println("Using config file:", viper.ConfigFileUsed())
-	} else {
-		verbose.Println("no config file found")
-	}
-}
-
-func newLogger(writer io.Writer, verbose bool) *log.Logger {
-	var flags int
-
-	if verbose {
-		flags = log.LstdFlags
-	} else {
-		flags = 0
-	}
-
-	return log.New(writer, "", flags)
+	viper.ReadInConfig()
 }

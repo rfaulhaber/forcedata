@@ -7,8 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
-	"log"
-	"net/http"
+		"net/http"
 	"net/url"
 	"strings"
 )
@@ -88,8 +87,6 @@ func SendAuthRequest(c Credential) (Session, error) {
 
 	client := http.DefaultClient
 
-	log.Println("making request for cred flow:", c.Encode())
-
 	resp, err := client.Do(req)
 
 	if err != nil {
@@ -97,8 +94,6 @@ func SendAuthRequest(c Credential) (Session, error) {
 	}
 
 	respBody, err := ioutil.ReadAll(resp.Body)
-
-	log.Println("raw response", string(respBody))
 
 	if err != nil {
 		return Session{}, err
@@ -127,10 +122,7 @@ func trimString(str string) string {
 func getCredsFromFile(path string) (Credential, error) {
 	fileBytes, err := ioutil.ReadFile(path)
 
-	log.Println("path", path)
-
 	if err != nil {
-		log.Println("authentication from file error")
 		return Credential{}, err
 	}
 
@@ -139,7 +131,6 @@ func getCredsFromFile(path string) (Credential, error) {
 	err = json.Unmarshal(fileBytes, &creds)
 
 	if err != nil {
-		log.Println("json unmarshal error")
 		return Credential{}, err
 	}
 

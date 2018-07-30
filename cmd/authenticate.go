@@ -2,11 +2,10 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
-	"github.com/rfaulhaber/forcedata/auth"
+		"github.com/rfaulhaber/forcedata/auth"
 	"github.com/spf13/cobra"
+		"os"
 	"log"
-	"os"
 )
 
 // authenticateCmd represents the authenticate command
@@ -51,14 +50,12 @@ func init() {
 func runAuthenticate(cmd *cobra.Command, args []string) {
 	// if file specified, authenticate from file. file must either have client key and url or username, pass, and url
 	if fileFlag {
-		// if file contains username, password, authenticate with credentials
-		// else, attempt to authenticate using user agent
 		session, err := auth.AuthenticateFromFile(args[0])
 
 		if err != nil {
 			switch err.(type) {
 			case auth.MissingFieldError:
-				fmt.Println("A required field for authentication is missing from your file. ", err.Error())
+				log.Println("A required field for authentication is missing from your file. ", err.Error())
 			default:
 				log.Println("something went wrong, worhthwile error messages aren't implemented yet!")
 				log.Fatalln("error message:", err)
@@ -67,10 +64,7 @@ func runAuthenticate(cmd *cobra.Command, args []string) {
 
 		writeOut(session)
 	} else {
-		// if client id specified, use that
-		// else if username, pass, and url flag specified, use those
-		// else if only some flags specified, prompt for missing
-		fmt.Println("authentication via prompt isn't implemented yet!")
+		stdWriter.Println("authentication via prompt isn't implemented yet!")
 		os.Exit(1)
 	}
 }
@@ -91,7 +85,7 @@ func writeOut(session auth.Session) {
 
 		if err != nil {
 			verbose.Println("os.Create encountered error")
-			errorLog.Fatalln(err)
+			log.Fatalln(err)
 		}
 
 		auth.WriteSession(session, outFile)

@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 	"os"
 	"strings"
+	"log"
 )
 
 var flags CtxFlags
@@ -50,7 +51,7 @@ func runLoad(cmd *cobra.Command, args []string) {
 	session, err := getSession()
 
 	if err != nil {
-		errorLog.Fatalln(err)
+		log.Fatalln(err)
 	}
 
 	op, _ := validateFlags(flags)
@@ -62,11 +63,11 @@ func runLoad(cmd *cobra.Command, args []string) {
 	}
 
 	if err != nil {
-		errorLog.Fatalln(err)
+		log.Fatalln(err)
 	}
 
 	if err := ctx.Run(args); err != nil {
-		errorLog.Fatalln(err)
+		log.Fatalln(err)
 	}
 }
 
