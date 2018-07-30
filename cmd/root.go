@@ -7,12 +7,19 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"io"
+	"io/ioutil"
 	"log"
 )
 
 var (
-	cfgFile   string
-	quietFlag bool
+	cfgFile     string
+	quietFlag   bool
+	verboseFlag bool
+
+	verbose   *log.Logger
+	errorLog  *log.Logger
+	stdWriter = newLogger(os.Stdout, false)
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -26,9 +33,21 @@ examples and usage of using your application. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if verboseFlag && !quietFlag {
+			verbose = newLogger(os.Stdout, true)
+		} else {
+			verbose = newLogger(ioutil.Discard, false)
+		}
+
+		if quietFlag {
+			stdWriter = newLogger(ioutil.Discard, false)
+		} else {
+			stdWriter = newLogger(os.Stdout, false)
+		}
+
+		errorLog = newLogger(os.Stderr, false)
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -42,17 +61,10 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "Config file (default is ./config.json)")
 	rootCmd.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "Suppresses all output to stdout")
+	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Prints debug logs to stdout.")
 
-	// TODO add -v or --log flag?
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
@@ -69,7 +81,6 @@ func initConfig() {
 			os.Exit(1)
 		}
 
-		// Search config in home directory with name ".data-cmd" (without extension).
 		viper.AddConfigPath(".")
 		viper.AddConfigPath(home + "/.config/forcedata")
 		viper.AddConfigPath("/etc/forcedata")
@@ -78,9 +89,22 @@ func initConfig() {
 
 	viper.AutomaticEnv() // read in environment variables that match
 
-	// TODO deal with!
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		log.Println("Using config file:", viper.ConfigFileUsed())
+		verbose.Println("Using config file:", viper.ConfigFileUsed())
+	} else {
+		verbose.Println("no config file found")
 	}
+}
+
+func newLogger(writer io.Writer, verbose bool) *log.Logger {
+	var flags int
+
+	if verbose {
+		flags = log.LstdFlags
+	} else {
+		flags = 0
+	}
+
+	return log.New(writer, "", flags)
 }

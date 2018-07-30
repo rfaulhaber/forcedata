@@ -6,7 +6,6 @@ import (
 	"github.com/rfaulhaber/forcedata/job"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"log"
 	"os"
 	"strings"
 )
@@ -44,7 +43,6 @@ func init() {
 
 func preRunLoad(cmd *cobra.Command, args []string) error {
 	_, err := validateFlags(flags)
-
 	return err
 }
 
@@ -54,7 +52,7 @@ func runLoad(cmd *cobra.Command, args []string) {
 	op, _ := validateFlags(flags)
 
 	if err != nil {
-		log.Fatalln(err)
+		errorLog.Fatalln(err)
 	}
 
 	ctx, err := NewRunContext(op, flags, session)
@@ -64,11 +62,11 @@ func runLoad(cmd *cobra.Command, args []string) {
 	}
 
 	if err != nil {
-		log.Fatalln(err)
+		errorLog.Fatalln(err)
 	}
 
 	if err := ctx.Run(args); err != nil {
-		log.Fatalln(err)
+		errorLog.Fatalln(err)
 	}
 }
 

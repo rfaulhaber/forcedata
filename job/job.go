@@ -7,12 +7,9 @@ import (
 	"github.com/rfaulhaber/forcedata/auth"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"time"
 )
-
-// TODO enforce job state?
 
 const (
 	DefaultWatchTime = 5 * time.Second
@@ -94,11 +91,9 @@ func NewJob(config JobConfig, session auth.Session) *Job {
 	}
 }
 
-// Creates a job on the server with the specified config for the job
+// Creates a job on the server with the specified config for the job.
 func (j *Job) Create() error {
 	endpoint := j.ingestURL()
-
-	log.Println("attempting to hit endpoint: ", endpoint)
 
 	reqBody, _ := json.Marshal(j.config)
 
@@ -112,7 +107,7 @@ func (j *Job) Create() error {
 	response, err := client.Do(req)
 
 	if err != nil {
-		return errors.Wrap(err, "create: error in response")
+		return errors.Wrap(err, "creating job returned error")
 	}
 
 	var responseBody bytes.Buffer
@@ -122,22 +117,14 @@ func (j *Job) Create() error {
 	info, err := getJobInfo(bodyReader)
 
 	if err != nil {
-		if _, ok := errors.Cause(err).(*json.UnmarshalTypeError); ok {
-			jobErr, err := getJobError(&responseBody)
-
-			if err != nil {
-				return errors.Wrap(err, "attempted to parse job error")
-			}
-
-			return jobErr[0]
+		if jobErr, ok := checkJobError(err, &responseBody); ok {
+			return jobErr
 		} else {
-			return errors.Wrap(err, "create: get job info")
+			return errors.Wrap(err, "server returned error creating job")
 		}
 	}
 
 	j.info = info
-	log.Println("info from server", info)
-
 	return nil
 }
 
@@ -146,12 +133,10 @@ func (j *Job) Create() error {
 func (j *Job) Upload(content []byte) error {
 	endpoint := j.batchURL()
 
-	log.Println("attempting to hit endpoint: ", endpoint)
-
 	req, err := http.NewRequest("PUT", endpoint, bytes.NewReader(content))
 
 	if err != nil {
-		return errors.Wrap(err, "upload: could not create request")
+		return errors.Wrap(err, "could not generate upload request")
 	}
 
 	req.Header.Add("Content-Type", "text/csv")
@@ -160,20 +145,17 @@ func (j *Job) Upload(content []byte) error {
 
 	client := http.DefaultClient
 
-	log.Println("uploading content")
 	resp, err := client.Do(req)
 
 	if err != nil {
-		return errors.Wrap(err, "upload: response error")
+		return errors.Wrap(err, "upload response error")
 	}
 
-	// TODO return custom error
 	if resp.StatusCode != 201 {
-		log.Println("upload: server responded with non-OK status code")
 		jobError, err := getJobError(resp.Body)
 
 		if err != nil {
-			return errors.Wrap(err, "could not read response body")
+			return errors.Wrap(err, "could not read upload response body")
 		}
 
 		return errors.Errorf("upload: server responded with %d, error: code: %s, message: %s", resp.StatusCode, jobError[0].ErrorCode, jobError[0].Message)
@@ -182,14 +164,15 @@ func (j *Job) Upload(content []byte) error {
 	return j.uploadComplete()
 }
 
-// Writes progress to the Status channel, and Done when job finishes.
+// Continuously makes request to get job info from the server.  Writes progress to the Status channel. If server reports
+// state as "JobComplete" or "Failed", Status channel closes. Writes any error encountered to Error.
 func (j *Job) Watch(d time.Duration) {
 	for {
 		time.Sleep(d)
 		info, err := j.GetInfo()
 
-		// TODO do something more constructive here
 		if err != nil {
+			j.Error <- err
 			return
 		}
 
@@ -203,23 +186,9 @@ func (j *Job) Watch(d time.Duration) {
 }
 
 func (j *Job) GetInfo() (JobInfo, error) {
-	endpoint := j.session.InstanceURL + "/services/data/v" + latestVersion + "/jobs/ingest/" + j.info.ID
+	endpoint := j.ingestURLWithID()
 
-	log.Println("attempting to hit endpoint: ", endpoint)
-
-	req, err := http.NewRequest("GET", endpoint, nil)
-
-	if err != nil {
-		return JobInfo{}, err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
-
-	client := http.DefaultClient
-
-	resp, err := client.Do(req)
+	resp, err := j.jsonRequest("GET", endpoint, nil)
 
 	if err != nil {
 		return JobInfo{}, err
@@ -230,8 +199,6 @@ func (j *Job) GetInfo() (JobInfo, error) {
 	if err != nil {
 		return JobInfo{}, err
 	}
-
-	log.Println("raw info", info)
 
 	return info, err
 }
@@ -250,28 +217,13 @@ func (j *Job) Abort() error {
 func (j *Job) Delete() error {
 	endpoint := j.ingestURLWithID()
 
-	log.Println("attempting to hit endpoint: ", endpoint)
-
-	req, err := http.NewRequest("DELETE", endpoint, nil)
+	resp, err := j.jsonRequest("DELETE", endpoint, nil)
 
 	if err != nil {
 		return errors.Wrap(err, "delete request failed")
 	}
 
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
-
-	client := http.DefaultClient
-
-	resp, err := client.Do(req)
-
-	if err != nil {
-		return errors.Wrap(err, "delete callout failed")
-	}
-
 	if resp.StatusCode != 204 {
-		// TODO parse error?
 		return errors.New("something went wrong with deleting job")
 	}
 
@@ -290,11 +242,13 @@ func (j *Job) GetUnprocessed() ([]byte, error) {
 	panic("not implemented")
 }
 
-func (j *Job) SetJobInfo(info JobInfo) {
+func (j *Job) SetInfo(info JobInfo) {
 	j.info = info
 }
 
-// TODO generalize callouts, create cleaner mechanism for it
+func (j *Job) ID() string {
+	return j.info.ID
+}
 
 func (j *Job) uploadComplete() error {
 	return j.setState("UploadComplete")
@@ -303,45 +257,31 @@ func (j *Job) uploadComplete() error {
 func (j *Job) setState(state string) error {
 	endpoint := j.ingestURLWithID()
 
-	log.Println("attempting to hit endpoint: ", endpoint)
-
 	content, err := json.Marshal(struct {
 		State string `json:"state"`
 	}{
 		state,
 	})
 
-	log.Println("raw request content", string(content))
+	resp, err := j.jsonRequest("PATCH", endpoint, content)
 
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest("PATCH", endpoint, bytes.NewReader(content))
+	var responseBody bytes.Buffer
+
+	bodyReader := io.TeeReader(resp.Body, &responseBody)
+
+	_, err = getJobInfo(bodyReader)
 
 	if err != nil {
-		return err
+		if jobErr, ok := checkJobError(err, &responseBody); ok {
+			return jobErr
+		} else {
+			return errors.Wrap(err, "response error from setting state to "+state)
+		}
 	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
-
-	client := http.DefaultClient
-
-	resp, err := client.Do(req)
-
-	if err != nil {
-		return err
-	}
-
-	info, err := getJobInfo(resp.Body)
-
-	if err != nil {
-		return err
-	}
-
-	log.Println("raw info", info)
 
 	return nil
 }
@@ -358,6 +298,26 @@ func (j *Job) ingestURLWithID() string {
 	return j.ingestURL() + j.info.ID
 }
 
+func (j *Job) jsonRequest(method string, url string, body []byte) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, bytes.NewReader(body))
+
+	if err != nil {
+		return nil, errors.Wrap(err, "request generation failed")
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+j.session.AccessToken)
+
+	resp, err := http.DefaultClient.Do(req)
+
+	if err != nil {
+		return nil, errors.Wrap(err, method+" response returned error")
+	}
+
+	return resp, nil
+}
+
 func getJobInfo(b io.Reader) (JobInfo, error) {
 	var info JobInfo
 
@@ -368,6 +328,20 @@ func getJobInfo(b io.Reader) (JobInfo, error) {
 	}
 
 	return info, nil
+}
+
+func checkJobError(err error, reader io.Reader) (JobError, bool) {
+	if _, ok := errors.Cause(err).(*json.UnmarshalTypeError); ok {
+		jobErr, err := getJobError(reader)
+
+		if err != nil {
+			return JobError{}, false
+		}
+
+		return jobErr[0], true
+	} else {
+		return JobError{}, false
+	}
 }
 
 func getJobError(b io.Reader) ([]JobError, error) {

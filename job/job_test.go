@@ -5,20 +5,11 @@ import (
 	"github.com/rfaulhaber/forcedata/auth"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 )
-
-func TestMain(m *testing.M) {
-	// suppresses logging for test suite
-	log.SetOutput(ioutil.Discard)
-	retCode := m.Run()
-	os.Exit(retCode)
-}
 
 func TestGetDelimName(t *testing.T) {
 	testCases := []struct {

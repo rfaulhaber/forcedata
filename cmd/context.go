@@ -1,13 +1,11 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"github.com/rfaulhaber/forcedata/auth"
 	"github.com/rfaulhaber/forcedata/job"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"time"
 )
@@ -60,8 +58,7 @@ func (ctx *Context) SetWatch() {
 }
 
 func (ctx *Context) Run(args []string) error {
-	log.Println("running context")
-	log.Println("creating job...")
+	verbose.Println("creating job...")
 
 	err := ctx.job.Create()
 
@@ -69,7 +66,7 @@ func (ctx *Context) Run(args []string) error {
 		return errors.Wrap(err, "ctx error creating job")
 	}
 
-	log.Println("uploading content...")
+	verbose.Println("uploading content...")
 	var content []byte
 
 	if isPipe() {
@@ -80,13 +77,13 @@ func (ctx *Context) Run(args []string) error {
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "ctx could not read source")
+		return errors.Wrap(err, "could not read data source")
 	}
 
 	err = ctx.job.Upload(content)
 
 	if err != nil {
-		return errors.Wrap(err, "ctx error uploading to job")
+		return errors.Wrap(err, "could not upload content to job")
 	}
 
 	if ctx.setWatch {
@@ -96,7 +93,7 @@ func (ctx *Context) Run(args []string) error {
 			select {
 			case status, ok := <-ctx.job.Status:
 				if ok {
-					printStatus(status, os.Stdout)
+					printStatus(status)
 				} else {
 					return nil
 				}
@@ -109,9 +106,8 @@ func (ctx *Context) Run(args []string) error {
 	return nil
 }
 
-func printStatus(status job.JobInfo, out io.Writer) {
-	io.WriteString(out, "")
-	fmt.Fprintf(out, "Records processed: %d\tRecords failed: %d", status.RecordsProcessed, status.RecordsFailed)
+func printStatus(status job.JobInfo) {
+	stdWriter.Printf("Records processed: %d\tRecords failed: %d", status.RecordsProcessed, status.RecordsFailed)
 }
 
 // reads content from source
