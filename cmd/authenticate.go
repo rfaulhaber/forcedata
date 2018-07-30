@@ -90,10 +90,8 @@ func writeOut(session auth.Session) {
 		outFile, err := os.Create(outFlag)
 
 		if err != nil {
-			// only for development
-			// TODO implement better error handling here
-			log.Println("os create error")
-			log.Fatalln(err)
+			verbose.Println("os.Create encountered error")
+			errorLog.Fatalln(err)
 		}
 
 		auth.WriteSession(session, outFile)

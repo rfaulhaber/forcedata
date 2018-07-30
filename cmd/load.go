@@ -49,11 +49,11 @@ func preRunLoad(cmd *cobra.Command, args []string) error {
 func runLoad(cmd *cobra.Command, args []string) {
 	session, err := getSession()
 
-	op, _ := validateFlags(flags)
-
 	if err != nil {
 		errorLog.Fatalln(err)
 	}
+
+	op, _ := validateFlags(flags)
 
 	ctx, err := NewRunContext(op, flags, session)
 
@@ -100,14 +100,28 @@ func validateFlags(flags CtxFlags) (string, error) {
 	}
 
 	if count > 1 {
-		return "", errors.New("You can only specify one operation flag. See help for details.")
+		return "", errors.New("You can only specify one operation flag.")
 	}
 
 	if count == 0 {
-		return "", errors.New("You must specify an operation flag. See help for details.")
+		return "", errors.New("You must specify an operation flag.")
 	}
 
 	return op, nil
+}
+
+func getSession() (auth.Session, error) {
+	session := auth.Session{}
+
+	if err := viper.Unmarshal(&session); err != nil {
+		return session, errors.Wrap(err, "Attempted to parse config file, received following error. It may be missing or improperly formatted.")
+	}
+
+	if missing, ok := validSession(session); !ok {
+		return session, errors.New("Session info not valid. Missing the following fields: " + strings.Join(missing, ", "))
+	}
+
+	return session, nil
 }
 
 func validSession(session auth.Session) (missing []string, ok bool) {
@@ -124,18 +138,4 @@ func validSession(session auth.Session) (missing []string, ok bool) {
 	}
 
 	return missing, len(missing) == 0
-}
-
-func getSession() (auth.Session, error) {
-	session := auth.Session{}
-
-	if err := viper.Unmarshal(&session); err != nil {
-		return session, errors.Wrap(err, "Attempted to parse config file, received following error. It may be missing or improperly formatted.")
-	}
-
-	if missing, ok := validSession(session); !ok {
-		return session, errors.New("Session info not valid. Missing the following fields: " + strings.Join(missing, ", "))
-	}
-
-	return session, nil
 }
