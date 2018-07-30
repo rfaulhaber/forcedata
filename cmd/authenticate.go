@@ -2,23 +2,31 @@ package cmd
 
 import (
 	"errors"
-		"github.com/rfaulhaber/forcedata/auth"
+	"github.com/rfaulhaber/forcedata/auth"
 	"github.com/spf13/cobra"
-		"os"
 	"log"
+	"os"
 )
 
 // authenticateCmd represents the authenticate command
 var authenticateCmd = &cobra.Command{
-	Use: "authenticate",
+	Use: "authenticate [OPTIONS]",
 	// TODO write this
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Generate REST API credentials",
+	Long: `Generates a JSON file containing an access token via the Salesforce REST API based on a username, 
+password, client ID and client secret. 
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+If no arguments are specified, the user will be prompted to input a username, password, client ID, 
+and client secret.
+
+If the --file flag is specified with a path to a JSON file, that file will be read and used 
+as credentials. You may also pass in the file to stdin without specifying the --stdin flag.
+
+If the --username, --password, --client-id, or --client-secret flags are specified, those 
+will be used as credentials and the user will be prompted for anything missing.
+
+If the --stdin flag is specified, the program will attempt to read the password (and only 
+the password) from stdin.`,
 	Args: validateArgs,
 	Run:  runAuthenticate,
 }
@@ -37,8 +45,8 @@ func init() {
 	rootCmd.AddCommand(authenticateCmd)
 
 	authenticateCmd.Flags().BoolVar(&fileFlag, "file", false, "Load user credentials from file")
-	authenticateCmd.Flags().StringVarP(&usernameFlag, "username", "u", "", "Username")
-	authenticateCmd.Flags().StringVarP(&passFlag, "password", "p", "", "Password")
+	authenticateCmd.Flags().StringVar(&usernameFlag, "username", "", "Username")
+	authenticateCmd.Flags().StringVar(&passFlag, "password", "", "Password")
 	authenticateCmd.Flags().StringVar(&clientIDFlag, "client-id", "", "Client ID, the Consumer Key field to the connected app.")
 	authenticateCmd.Flags().StringVar(&clientSecretFlag, "client-secret", "", "Client Secret, the Consumer Secret field to the connected app.")
 	authenticateCmd.Flags().BoolVar(&stdinFlag, "stdin", false, "Read password from stdin")
@@ -64,7 +72,7 @@ func runAuthenticate(cmd *cobra.Command, args []string) {
 
 		writeOut(session)
 	} else {
-		stdWriter.Println("authentication via prompt isn't implemented yet!")
+		stdWriter.Println("This should trigger authentication via prompt, but it isn't implemented yet!")
 		os.Exit(1)
 	}
 }

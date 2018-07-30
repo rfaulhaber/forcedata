@@ -16,21 +16,15 @@ var (
 	quietFlag   bool
 	verboseFlag bool
 
-	verbose = log.New(ioutil.Discard, "", 0)
+	verbose   = log.New(ioutil.Discard, "", 0)
 	stdWriter = log.New(os.Stdout, "", 0)
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "data [OPTIONS] COMMAND",
-	Short: "Unofficial CLI tool for doing data loads",
-	// TODO write this!
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "CLI tool for the Salesforce Bulk API",
+	Long:  `A CLI tool that allows Salesforce developers to do data loads from the terminal.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if verboseFlag {
 			verbose = log.New(os.Stderr, "", 0)
@@ -57,9 +51,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "Config file (default is ./config.json)")
 	rootCmd.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "Suppresses all output to stdout")
-	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Prints debug logs to stdout.")
-
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Prints debug logs to stderr.")
 }
 
 // initConfig reads in config file and ENV variables if set.
