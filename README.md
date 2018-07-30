@@ -29,13 +29,20 @@ be v1.0, subject to change:
 
 - [ ] Implement authentication prompts
 - [ ] Implement finished job reporting (GetSuccess, GetFailure, GetUnprocessed)
- via `report` command.
+ via `report` command
 - [ ] Allow for multiple files to be specified in `load`
 - [ ] Release the `job` package as a separate repo
-- [ ] Write more comprehensive documentation for `auth` and `job` packages.
+- [ ] Write more comprehensive documentation for `auth` and `job` packages
+- [ ] Write better tests
 - [ ] Generate bash / zsh completions 
 - [ ] Write GoDoc
 - [ ] Write install script
+
+## Contributing
+If you find a bug, please open an issue on this repo. If you'd like to the
+development of this program, please fork this repo and open a pull request.
+Please run a `go fmt` on your project and make sure that the test suite
+passes.
 
 ## License
 This program is freely distributed under the MIT license with the hope that it 
