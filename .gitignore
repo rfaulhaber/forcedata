@@ -17,3 +17,4 @@
 vendor/
 out/
 config.*
+auth.* # use test authentication files named "auth"

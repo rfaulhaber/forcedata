@@ -9,9 +9,23 @@ import (
 	"log"
 	"os"
 	"strings"
+	"io/ioutil"
+	"io"
+	"time"
+	"fmt"
 )
 
-var flags CtxFlags
+type flagStr struct {
+	objFlag    string
+	delimFlag  string
+	watchFlag  time.Duration
+	insertFlag bool
+	updateFlag bool
+	upsertFlag bool
+	deleteFlag bool
+}
+
+var flags flagStr
 
 // loadCmd represents the load command
 var loadCmd = &cobra.Command{
@@ -25,13 +39,13 @@ var loadCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(loadCmd)
-	loadCmd.Flags().StringVar(&flags.DelimFlag, "delim", ",", "Delimiter used in files.")
-	loadCmd.Flags().DurationVar(&flags.WatchFlag, "watch", job.DefaultWatchTime, "Continuously checks server on job progress.")
-	loadCmd.Flags().StringVar(&flags.ObjFlag, "object", "", "Object being inserted.")
-	loadCmd.Flags().BoolVarP(&flags.InsertFlag, "insert", "i", false, "Operation flag. Specifies insert job.")
-	loadCmd.Flags().BoolVarP(&flags.UpdateFlag, "update", "u", false, "Operation flag. Specifies update job.")
-	loadCmd.Flags().BoolVar(&flags.UpsertFlag, "upsert", false, "Operation flag. Specifies upsert job.")
-	loadCmd.Flags().BoolVarP(&flags.DeleteFlag, "delete", "d", false, "Operation flag. Specifies delete job.")
+	loadCmd.Flags().StringVar(&flags.delimFlag, "delim", ",", "Delimiter used in files.")
+	loadCmd.Flags().DurationVar(&flags.watchFlag, "watch", job.DefaultWatchTime, "Continuously checks server on job progress.")
+	loadCmd.Flags().StringVar(&flags.objFlag, "object", "", "Object being inserted.")
+	loadCmd.Flags().BoolVarP(&flags.insertFlag, "insert", "i", false, "Operation flag. Specifies insert job.")
+	loadCmd.Flags().BoolVarP(&flags.updateFlag, "update", "u", false, "Operation flag. Specifies update job.")
+	loadCmd.Flags().BoolVar(&flags.upsertFlag, "upsert", false, "Operation flag. Specifies upsert job.")
+	loadCmd.Flags().BoolVarP(&flags.deleteFlag, "delete", "d", false, "Operation flag. Specifies delete job.")
 
 	loadCmd.MarkFlagRequired("object")
 	loadCmd.Flags().Lookup("watch").NoOptDefVal = job.DefaultWatchTime.String()
@@ -51,37 +65,78 @@ func runLoad(cmd *cobra.Command, args []string) {
 
 	op, _ := validateFlags(flags)
 
-	ctx, err := NewRunContext(op, flags, session)
+	delim, ok := job.GetDelimName(flags.delimFlag)
 
-	if cmd.Flags().Changed("watch") {
-		ctx.SetWatch()
+	if !ok {
+		log.Fatalln(errors.Errorf("Invalid delimiter: %s", flags.delimFlag))
+	}
+
+	config := job.JobConfig{
+		Object:      flags.objFlag,
+		Operation: op,
+		Delim: delim,
+		ContentType: "CSV",
+	}
+
+	verbose.Println("creating job...")
+
+	j := job.New(config, session)
+
+	if err := j.Create(); err != nil {
+		log.Fatalln("could not create job:", err)
+	}
+
+	verbose.Println("uploading content...")
+	var content []byte
+
+	if isPipeInput() {
+		content, err = readSource(os.Stdin)
+	} else {
+		// we only support uploading one file at a time at the moment!
+		content, err = ioutil.ReadFile(args[0])
 	}
 
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("could not read source of ")
 	}
 
-	if err := ctx.Run(args); err != nil {
-		log.Fatalln(err)
+	if err = j.Upload(content); err != nil {
+		log.Fatalln("could not upload content to job")
+	}
+
+	if cmd.Flags().Changed("watch") {
+		go j.Watch(flags.watchFlag)
+
+		for {
+			select {
+			case status, ok := <-j.Status:
+				if ok {
+					printStatus(status)
+				} else {
+					return
+				}
+			case err := <-j.Error:
+				log.Fatalln("watching job reported error: ", err)
+			}
+		}
 	}
 }
 
 func validateCmdArgs(cmd *cobra.Command, args []string) error {
-	info, _ := os.Stdin.Stat()
-
-	if info.Size() > 0 || len(args) == 1 {
-		return nil
-	} else {
+	if !isPipeInput() && len(args) != 1 {
+		fmt.Println("is pipe", isPipeInput())
 		return errors.New("must either read in CSV content from stdin or specify one file to upload")
 	}
+
+	return nil
 }
 
-func validateFlags(flags CtxFlags) (string, error) {
+func validateFlags(flags flagStr) (string, error) {
 	opMap := map[string]bool{
-		"insert": flags.InsertFlag,
-		"update": flags.UpdateFlag,
-		"upsert": flags.UpsertFlag,
-		"delete": flags.DeleteFlag,
+		"insert": flags.insertFlag,
+		"update": flags.updateFlag,
+		"upsert": flags.upsertFlag,
+		"delete": flags.deleteFlag,
 	}
 
 	count := 0
@@ -134,4 +189,24 @@ func validSession(session auth.Session) (missing []string, ok bool) {
 	}
 
 	return missing, len(missing) == 0
+}
+
+func printStatus(status job.JobInfo) {
+	stdWriter.Printf("Records processed: %d\tRecords failed: %d", status.RecordsProcessed, status.RecordsFailed)
+}
+
+// reads content from source
+func readSource(source io.ReadCloser) ([]byte, error) {
+	content, err := ioutil.ReadAll(source)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "attempting to read file source")
+	}
+
+	return content, nil
+}
+
+func isPipeInput() bool {
+	stat, err := os.Stdin.Stat()
+	return stat.Mode()&os.ModeCharDevice != 0 || stat.Size() <= 0 && err == nil
 }

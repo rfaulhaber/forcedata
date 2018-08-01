@@ -55,8 +55,8 @@ type Session struct {
 // TODO implement!
 // func AuthenticateFromPrompt(in io.Reader, out io.Writer) (Session, err)
 
-func AuthenticateFromFile(path string) (Session, error) {
-	creds, err := getCredsFromFile(path)
+func AuthenticateFromFile(file []byte) (Session, error) {
+	creds, err := getCredsFromFile(file)
 
 	if err != nil {
 		return Session{}, err
@@ -119,16 +119,10 @@ func trimString(str string) string {
 	return strings.TrimSpace(strings.TrimSuffix(str, "\n"))
 }
 
-func getCredsFromFile(path string) (Credential, error) {
-	fileBytes, err := ioutil.ReadFile(path)
-
-	if err != nil {
-		return Credential{}, err
-	}
-
+func getCredsFromFile(file []byte) (Credential, error) {
 	var creds Credential
 
-	err = json.Unmarshal(fileBytes, &creds)
+	err := json.Unmarshal(file, &creds)
 
 	if err != nil {
 		return Credential{}, err

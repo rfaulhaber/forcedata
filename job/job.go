@@ -81,7 +81,7 @@ type Job struct {
 	info    JobInfo
 }
 
-func NewJob(config JobConfig, session auth.Session) *Job {
+func New(config JobConfig, session auth.Session) *Job {
 	return &Job{
 		make(chan JobInfo),
 		make(chan error),

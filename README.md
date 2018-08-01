@@ -1,20 +1,52 @@
 # forcedata
 [![pipeline status](https://gitlab.com/rfaulhaber/forcedata/badges/master/pipeline.svg)](https://gitlab.com/rfaulhaber/forcedata/commits/master)
 
-CLI tool for manipulating data in Salesforce
+CLI tool for loading data in Salesforce. Currently under development.
 
 ## Install
-Download one of the release binaries and add it to a directory in your PATH.
+ForceData should work on any OS that Go builds for. It doesn't have any special
+OS dependencies.
+
+Download one of the release binaries and add it to a directory in your PATH. On
+Linux and Unix, you can do this by doing something like:
+
+```
+mv forcedata-linux /usr/local/bin/data
+```
 
 ## Usage
 
+You are encouraged to run `data --help` for the help text for the program overall. You may specify the `--help` flag to 
+see the help text for every subsequent command (e.g. `data load --help`).
+
+The following commands are available: 
+
+- `authenticate` - for generating an oauth access token (see below)
+- `load` - for creating Bulk API jobs
+- `version` - prints the current version and exits
+
 ### Obtaining REST credentials
 
-This program uses Salesforce's Bulk API, which requires credentials.
+This program uses Salesforce's Bulk API, which requires oauth authentication.
+
+First, you must create a [connected App in Salesforce](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_defining_remote_access_applications.htm). 
+You'll then need a JSON file with the following fields:`client_id`, `client_secret`, `username`, and `password`,
+corresponding to the client ID and secret of your connected app, and the username and password of the user you want to
+run the program as.
+
+Once you have a JSON file, you can now run:
+
+```
+data authenticate --file your-creds.json
+``` 
+This will generate an access
+token. The program will write a JSON file containing an access token and some other information to stdout. You will need
+this JSON file to run any other commands.
+
+This token will eventually expire, once that happens you can rerun the previous command to get a new one. 
 
 ## Building 
-Assuming you have a 
-[properly configured Go environment](https://golang.org/doc/code.html), run:
+Assuming you have a [properly configured Go environment](https://golang.org/doc/code.html), run:
 
 ```
 go get -u github.com/rfaulhaber/forcedata
@@ -46,4 +78,4 @@ passes.
 
 ## License
 This program is freely distributed under the MIT license with the hope that it 
-will be useful.
+will be useful. This program is not endorsed or affiliated with Salesforce.

@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
-)
+	)
 
 func TestGetDelimName(t *testing.T) {
 	testCases := []struct {
@@ -31,7 +31,7 @@ func TestGetDelimName(t *testing.T) {
 	}
 }
 
-func TestNewJob(t *testing.T) {
+func TestNew(t *testing.T) {
 	testSession := makeSession("http://some.url")
 
 	testConfig := JobConfig{
@@ -49,7 +49,7 @@ func TestNewJob(t *testing.T) {
 		JobInfo{},
 	}
 
-	result := NewJob(testConfig, testSession)
+	result := New(testConfig, testSession)
 
 	assert.Equal(t, expected.session, result.session)
 	assert.Equal(t, expected.config, result.config)
@@ -94,7 +94,7 @@ func TestJob_Create(t *testing.T) {
 	for i, tc := range testCases {
 		server := httptest.NewServer(tc.handler)
 
-		job := NewJob(JobConfig{"Contact", "insert", "CSV", "COMMA"}, makeSession(server.URL))
+		job := New(JobConfig{"Contact", "insert", "CSV", "COMMA"}, makeSession(server.URL))
 
 		err := job.Create()
 
@@ -153,7 +153,7 @@ func TestJob_Upload(t *testing.T) {
 		}
 	}))
 
-	job := NewJob(JobConfig{"Contact", "insert", "CSV", "COMMA"}, makeSession(server.URL))
+	job := New(JobConfig{"Contact", "insert", "CSV", "COMMA"}, makeSession(server.URL))
 	job.info.ID = "123ID321"
 	job.info.ContentURL = "services/data/v43.0/jobs/batches"
 
@@ -200,18 +200,61 @@ func TestJob_UploadError(t *testing.T) {
 		}
 	}))
 
-	job := NewJob(JobConfig{"Contact", "insert", "CSV", "COMMA"}, makeSession(server.URL))
+	job := New(JobConfig{"Contact", "insert", "CSV", "COMMA"}, makeSession(server.URL))
 	job.info.ID = "123ID321"
 	job.info.ContentURL = "services/data/v43.0/jobs/batches"
 
 	err := job.Upload(testBody)
 
 	assert.Error(t, err)
+	assert.Equal(t, 1, callCount)
 	assert.Equal(t, err.Error(), "upload: server responded with 401, error: code: ERROR_CODE, message: test message")
 }
 
 func TestJob_UploadCloseError(t *testing.T) {
+	var actualMethod string
+	var actualURL string
 
+	testBody := []byte("FirstName,LastName\nPerson,One")
+
+	callCount := 0
+
+	testErrorCode := "ERROR_CODE"
+	testErrorMessage := "test message"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+
+		if callCount == 1 {
+			w.WriteHeader(201)
+		} else {
+			_, err := ioutil.ReadAll(r.Body)
+
+			if err != nil {
+				panic(err)
+			}
+
+			actualMethod = r.Method
+			actualURL = r.URL.String()
+
+			w.WriteHeader(401)
+
+			resp, _ := json.Marshal([]JobError{{ErrorCode: testErrorCode, Message: testErrorMessage}})
+
+			w.Write(resp)
+		}
+	}))
+
+	job := New(JobConfig{"Contact", "insert", "CSV", "COMMA"}, makeSession(server.URL))
+	job.info.ID = "123ID321"
+	job.info.ContentURL = "services/data/v43.0/jobs/batches"
+
+	err := job.Upload(testBody)
+
+	assert.Error(t, err)
+	assert.Equal(t, testErrorMessage, err.Error())
+	assert.Equal(t, "PATCH", actualMethod)
+	assert.Equal(t, "/services/data/v43.0/jobs/ingest/123ID321", actualURL)
 }
 
 func TestJob_Abort(t *testing.T) {
@@ -223,26 +266,6 @@ func TestJob_Complete(t *testing.T) {
 }
 
 func TestJob_Delete(t *testing.T) {
-
-}
-
-func TestJob_SetJobInfo(t *testing.T) {
-
-}
-
-func TestJob_GetInfo(t *testing.T) {
-
-}
-
-func TestJob_GetSuccess(t *testing.T) {
-
-}
-
-func TestJob_GetFailure(t *testing.T) {
-
-}
-
-func TestJob_GetUnprocessed(t *testing.T) {
 
 }
 

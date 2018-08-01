@@ -76,18 +76,13 @@ func TestAuthenticateFromFile(t *testing.T) {
 
 	c.URL = ts.URL
 
-	tmp, err := makeTempCredFile(c)
-
-	defer func() {
-		ts.Close()
-		cleanTempFile(tmp)
-	}()
+	b, err := json.Marshal(c)
 
 	if err != nil {
-		t.Error("could not make temp file", err)
+		t.Error("could not marshal credential", err)
 	}
 
-	result, err := AuthenticateFromFile(tmp.Name())
+	result, err := AuthenticateFromFile(b)
 
 	if !cmp.Equal(result, s) {
 		t.Error("expected: ", s, "received: ", result)

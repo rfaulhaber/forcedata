@@ -6,6 +6,8 @@ import (
 	"github.com/spf13/cobra"
 	"log"
 	"os"
+	"io/ioutil"
+	"encoding/json"
 )
 
 // authenticateCmd represents the authenticate command
@@ -58,16 +60,33 @@ func init() {
 func runAuthenticate(cmd *cobra.Command, args []string) {
 	// if file specified, authenticate from file. file must either have client key and url or username, pass, and url
 	if fileFlag {
-		session, err := auth.AuthenticateFromFile(args[0])
+		b, err := ioutil.ReadFile(args[0])
+
+		if err != nil {
+			log.Fatalln("could not read file: ", err)
+		}
+
+		session, err := auth.AuthenticateFromFile(b)
 
 		if err != nil {
 			switch err.(type) {
 			case auth.MissingFieldError:
 				log.Println("A required field for authentication is missing from your file. ", err.Error())
 			default:
-				log.Println("something went wrong, worhthwile error messages aren't implemented yet!")
 				log.Fatalln("error message:", err)
 			}
+		}
+
+		var cred auth.Credential
+
+		err = json.Unmarshal(b, &cred)
+
+		if err != nil {
+			log.Fatalln("something went wrong: ", err)
+		}
+
+		if !auth.ValidateSession(session, cred.ClientSecret) {
+			log.Fatalln("The signature received from the server isn't valid! Your connection may not be secure!")
 		}
 
 		writeOut(session)
