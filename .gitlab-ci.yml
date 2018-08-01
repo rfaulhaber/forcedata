@@ -1,22 +1,21 @@
 image: golang:1.10
 
 stages:
-	- build
-	- test
+  - build
+  - test
 
 before_script:
-	- mkdir -p ${GOPATH}/src/${GO_PROJECT}
-	- go get -u github.com/golang/dep/cmd/dep
-	- cp -r ${CI_PROJECT_DIR}/* ${GOPATH}/src/${GO_PROJECT}/
-	- cd ${GOPATH}/src/${GO_PROJECT}	
-	- dep ensure
+  - go get -u -v github.com/golang/dep/cmd/dep
+  - cp -r /builds/rfaulhaber /go/src/github.com/rfaulhaber
+  - cd /go/src/github.com/rfaulhaber/forcedata
+  - dep ensure -v
 
 build-project:
-	stage: build
-	script:
-		- go build -v 
+  stage: build
+  script:
+    - go build -v
 
 test-project:
-	stage: test
-	script:
-		- go test -v -cover ./...
+  stage: test
+  script:
+    - go test -v -cover ./...
