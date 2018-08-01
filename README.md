@@ -1,5 +1,6 @@
 # forcedata
 [![pipeline status](https://gitlab.com/rfaulhaber/forcedata/badges/master/pipeline.svg)](https://gitlab.com/rfaulhaber/forcedata/commits/master)
+[![coverage report](https://gitlab.com/rfaulhaber/forcedata/badges/master/coverage.svg)](https://gitlab.com/rfaulhaber/forcedata/commits/master)
 
 CLI tool for loading data in Salesforce. Currently under development.
 
