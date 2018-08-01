@@ -3,13 +3,16 @@
 
 CLI tool for loading data in Salesforce. Currently under development.
 
+This was written mostly as an exercise in writing Go. The Salesforce CLI
+does everything this can do right now.
+
 ## Install
-ForceData should work on [any OS that Go builds for](https://gist.github.com/asukakenji/f15ba7e588ac42795f421b48b8aede63).
+forcedata should work on [any OS that Go builds for](https://gist.github.com/asukakenji/f15ba7e588ac42795f421b48b8aede63).
 As of now it doesn't have any special OS dependencies.
 
 I don't have an install script yet so you will have to install a binary 
 manually. Download one of the release binaries and add it to a directory in 
-your PATH. On Linux and Unix, you can do this by doing something like:
+your PATH. On a *nix system, you can do this by doing something like:
 
 ```
 mv forcedata-linux /usr/local/bin/data
@@ -72,13 +75,6 @@ be v1.0, subject to change:
 - [ ] Generate bash / zsh completions 
 - [ ] Write GoDoc
 - [ ] Write install script
-
-## Contributing
-If you find a bug, please open an issue on this repo describing your issue, the
-error you're receiving, and the command that is giving you the error. If you'd
-like to the development of this program, please fork this repo and open a pull
-request. Please run a `go fmt` on your project and make sure that the test suite
-passes.
 
 ## License
 This program is freely distributed under the MIT license with the hope that it 
