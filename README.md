@@ -4,18 +4,18 @@
 CLI tool for loading data in Salesforce. Currently under development.
 
 ## Install
-ForceData should work on any OS that Go builds for. It doesn't have any special
-OS dependencies.
+ForceData should work on [any OS that Go builds for](https://gist.github.com/asukakenji/f15ba7e588ac42795f421b48b8aede63).
+As of now it doesn't have any special OS dependencies.
 
-Download one of the release binaries and add it to a directory in your PATH. On
-Linux and Unix, you can do this by doing something like:
+I don't have an install script yet so you will have to install a binary 
+manually. Download one of the release binaries and add it to a directory in 
+your PATH. On Linux and Unix, you can do this by doing something like:
 
 ```
 mv forcedata-linux /usr/local/bin/data
 ```
 
 ## Usage
-
 You are encouraged to run `data --help` for the help text for the program overall. You may specify the `--help` flag to 
 see the help text for every subsequent command (e.g. `data load --help`).
 
@@ -55,6 +55,9 @@ go get -u github.com/rfaulhaber/forcedata
 You may now either run `go build` or `go install` to build a binary or install 
 a binary to your GOBIN, respectively.
 
+This repo also includes a makefile for convenient compiling to common operating
+systems.
+
 ## Roadmap
 This is a list of all the things I'd like to complete before I consider this to 
 be v1.0, subject to change:
@@ -71,9 +74,10 @@ be v1.0, subject to change:
 - [ ] Write install script
 
 ## Contributing
-If you find a bug, please open an issue on this repo. If you'd like to the
-development of this program, please fork this repo and open a pull request.
-Please run a `go fmt` on your project and make sure that the test suite
+If you find a bug, please open an issue on this repo describing your issue, the
+error you're receiving, and the command that is giving you the error. If you'd
+like to the development of this program, please fork this repo and open a pull
+request. Please run a `go fmt` on your project and make sure that the test suite
 passes.
 
 ## License
